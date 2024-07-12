@@ -17,120 +17,36 @@
 #endregion
 
 using System.ComponentModel;
-using System.Xml.Serialization;
 
 namespace MangaCLI.Net.Manga;
 
-#pragma warning disable CS8618
 public class ComicInfo
 {
-    public static XmlSerializer Serializer = XmlSerializer.FromTypes([typeof(ComicInfo)]).First()!;
+    public int Identifier;
     
-    [XmlIgnore]
-    public int Identifier { get; init; }
-    
-    [XmlIgnore]
-    public string? CoverUrl { get; init; }
-    
-    [XmlIgnore]
-    public StatusType Status { get; init; }
-    
+    public string[] Authors;
+    public string[] Artists;
+    public string[] Publishers;
+
     public string Title;
-    public string Series;
-    public string Number;
-    public int? Count;
-    public bool ShouldSerializeCount() 
-    {
-        return Count.HasValue;
-    }
-    public int? Volume;
-    public bool ShouldSerializeVolume() 
-    {
-        return Volume.HasValue;
-    }
-    public string AlternateSeries;
-    public string AlternateNumber;
-    public int? AlternateCount;
-    public bool ShouldSerializeAlternateCount() 
-    {
-        return AlternateCount.HasValue;
-    }
-    public string Summary;
-    public string Notes;
-    public int? Year;
-    public bool ShouldSerializeYear() 
-    {
-        return Year.HasValue;
-    }
-    public int? Month;
-    public bool ShouldSerializeMonth() 
-    {
-        return Month.HasValue;
-    }
-    public int? Day;
-    public bool ShouldSerializeDay() 
-    {
-        return Day.HasValue;
-    }
-    public string Writer;
-    public string Penciller;
-    public string Inker;
-    public string Colorist;
-    public string Letterer;
-    public string CoverArtist;
-    public string Editor;
-    public string Publisher;
-    public string Imprint;
-    public string Genre;
-    public string Tags;
-    public string Web;
-    public int PageCount;
-    public string LanguageISO;
-    public string Format;
-    public YesNoType BlackAndWhite;
-    public MangaType Manga;
-    public string Characters;
-    public string Teams;
-    public string Locations;
-    public string ScanInformation;
-    public string StoryArc;
-    public string SeriesGroup;
-
-    [XmlElement("AgeRating")]
-    public string InternalAgeRating
-    {
-        get => AgeRating.GetDescription();
-        set {}
-    }
-
-    [XmlIgnore]
-    public AgeRatingType AgeRating { get; set; }
-
-    private float _communityRating;
-    public float CommunityRating
-    {
-        set
-        {
-            if (value is >= 0 and <= 5)
-                _communityRating = MathF.Round(value, 2);
-        }
-        get => _communityRating;
-    }
-
-    public string MainCharacterOrTeam;
-    public string Review;
-    public ComicPageInfo[] Pages;
-
-    public enum MangaType
-    {
-        Unknown, No, Yes, YesAndRightToLeft
-    }
+    public string Country;
+    public StatusType Status;
+    public Dictionary<string, string> Links;
+    public float? TotalChapters; //TODO: Implement Metadata Lookup with Anilist
+    public int? TotalVolumes; //TODO: Implement Metadata Lookup with Anilist
+    public string? Description;
+    public string? DescriptionHtml;
+    public int Year;
+    public int Month;
+    public int Day;
+    public float CommunityRating;
+    public AgeRatingType AgeRating;
+    public Dictionary<string, string> AlternateTitles;
+    public string[] Genres;
+    public string[] Tags;
+    public string[] Categories;
+    public Dictionary<string, ImageType> Covers;
     
-    public enum YesNoType
-    {
-        Unknown, No, Yes
-    }
-
     public enum AgeRatingType
     {
         [MylarDescription("All")]
@@ -193,31 +109,10 @@ public class ComicInfo
         Unknown
     }
 
-    public class ComicPageInfo
+    public struct ImageType
     {
-        public int Image;
-        public ComicPageType Type;
-        public bool DoublePage;
-        public long ImageSize;
-        public string Key;
-        public string Bookmark;
-        public int ImageWidth;
-        public int ImageHeight;
-    }
-
-    public enum ComicPageType
-    {
-        FrontCover,
-        InnerCover,
-        Roundup,
-        Story,
-        Advertisement,
-        Editorial,
-        Letters,
-        Preview,
-        BackCover,
-        Other,
-        Deleted
+        public int Width;
+        public int Height;
+        public Uri Location;
     }
 }
-#pragma warning restore CS8618

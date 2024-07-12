@@ -20,7 +20,7 @@ namespace MangaCLI.Net.Manga;
 
 public interface IPage
 {
-    public string Url { get; init; }
+    public Uri Url { get; init; }
     public int Width { get; init; }
     public int Height { get; init; }
 }

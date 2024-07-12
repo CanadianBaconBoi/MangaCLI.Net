@@ -22,7 +22,7 @@ using System.Text.Json.Serialization;
 namespace MangaCLI.Net.Manga;
 
 #pragma warning disable CS8618
-public class MylarSeries
+public class MetadataMylar
 {
     [JsonPropertyName("version")]
     public string Version = "1.0.2";
@@ -44,7 +44,7 @@ public class MylarSeries
         [JsonPropertyName("year")]
         public int Year { get; init; }
         [JsonPropertyName("description_text")]
-        public string Description { get; init; }
+        public string? Description { get; init; }
         [JsonPropertyName("description_formatted")]
         public string? DescriptionHtml { get; init; }
         [JsonPropertyName("volume")]
@@ -62,9 +62,34 @@ public class MylarSeries
         [JsonPropertyName("status")]
         public string Status { get; init; } // one of `Continuing` or `Ended`
     }
+
+    public static MetadataMylar FromComicInfo(ComicInfo comicInfo, Func<Uri> alternateCover)
+    {
+        return new MetadataMylar
+        {
+            Metadata = new MetadataMylar.MylarMetadata
+            {
+                Type = "comicSeries",
+                AgeRating = comicInfo.AgeRating.GetMylarDescription(),
+                BookType = "Print",
+                ComicId = comicInfo.Identifier,
+                Year = comicInfo.Year,
+                CoverImageUrl = (comicInfo.Covers.FirstOrDefault().Value.Location ?? alternateCover()).ToString(),
+                TotalIssues = (int)MathF.Floor(comicInfo.TotalChapters ?? 0),
+                Description = comicInfo.Description?.ReplaceLineEndings(""),
+                DescriptionHtml = comicInfo.DescriptionHtml,
+                Name = comicInfo.Title,
+                Volume = comicInfo.TotalVolumes,
+                Imprint = null,
+                PublicationRun = $"{comicInfo.Year}",
+                Status = comicInfo.Status.GetMylarDescription(),
+                Publisher = string.Join(", ", comicInfo.Publishers),
+            }
+        };
+    }
 }
 
-[JsonSerializable(typeof(MylarSeries))]
+[JsonSerializable(typeof(MetadataMylar))]
 internal partial class MylarJsonContext : JsonSerializerContext;
 
 partial class MylarDescriptionAttribute: DescriptionAttribute

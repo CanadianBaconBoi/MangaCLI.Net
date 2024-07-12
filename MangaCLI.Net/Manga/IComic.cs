@@ -28,4 +28,6 @@ public interface IComic
     public string? CoverUrl { get; init; }
 
     public IEnumerable<IChapter> GetChapters(string language);
+
+    public ComicInfo ComicInfo { get; }
 }

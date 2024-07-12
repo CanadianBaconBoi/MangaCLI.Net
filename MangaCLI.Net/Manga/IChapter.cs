@@ -26,5 +26,5 @@ public interface IChapter
     public string[]? GroupName { get; set; }
 
     public IPage[] GetPages();
-    public ComicInfo GetComicInfo();
+    public MetadataComicRack GetComicRackMetadata();
 }

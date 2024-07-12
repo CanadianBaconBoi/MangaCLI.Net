@@ -24,6 +24,7 @@ using System.Text.Json;
 using CommandLine;
 using CommandLine.Text;
 using MangaCLI.Net.Manga;
+using MangaCLI.Net.Manga.ComicK;
 using MimeTypes;
 using PdfSharp;
 using PdfSharp.Drawing;
@@ -36,304 +37,303 @@ static class MangaCli
 {
     
     public static IConnector Connector = null!;
+
+    private static readonly Dictionary<string, Func<IConnector>> Connectors = new()
+    {
+        { "ComicK", () => new ComickConnector() }
+    };
+    
     public static void Main(string[] args)
     {
-        var optionsOptional = Parser.Default.ParseArguments<CommandLineOptions>(args);
-        if (optionsOptional.Errors.Any())
-        {
-            foreach (var error in optionsOptional.Errors)
-            {
-                switch (error.Tag)
-                {
-                    case ErrorType.UnknownOptionError:
-                        Console.Error.WriteLine("Unknown command line argument");
-                        break;
-                    case ErrorType.RepeatedOptionError:
-                        Console.Error.WriteLine("Command line argument specified multiple times");
-                        break;
-                    case ErrorType.MissingRequiredOptionError:
-                        Console.Error.WriteLine("Required command line argument not present");
-                        break;
-                    default:
-                        Console.Error.WriteLine("Error parsing command line arguments");
-                        break;
-                }
-                Environment.Exit(1);
-            }
-        }
-
-        var options = optionsOptional.Value;
+        var options = ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
         
-        var outputDirectory = options.OutputFolder
-            .Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)).Replace("//", "/")
-            .Replace("\\", "/");
-
-        if (!Directory.Exists(outputDirectory))
-        {
-            Directory.CreateDirectory(outputDirectory);
-        }
+        Connector = Connectors.First(connector => options.Source.Equals(connector.Key, StringComparison.CurrentCultureIgnoreCase)).Value();
         
-        switch (options.Source.ToLower())
-        {
-            case "comick":
-                Connector = new Manga.ComicK.ComickConnector();
-                break;
-            default:
-                Console.WriteLine(HelpText.AutoBuild(optionsOptional, t => t, e => e));
-                Console.WriteLine($"Source \"{options.Source}\" does not exist");
-                Environment.Exit(1);
-                return;
-        }
-
-        var comics = Connector.SearchComics(options.SearchQuery);
-        IComic? comic = null;
-        switch (options.SearchSelection)
-        {
-            case SearchSelectionType.Exact:
-                if (options.SearchQuery == options.SearchQuery.ToLower())
-                    options.SearchQuery = string.Concat(options.SearchQuery[0].ToString().ToUpper(), options.SearchQuery.AsSpan(1));
-                comic = comics.FirstOrDefault(c => c.Title.Equals(options.SearchQuery));
-                break;
-            case SearchSelectionType.First:
-                comic = comics.FirstOrDefault();
-                break;
-            case SearchSelectionType.Random:
-                var comicsArray = comics.ToArray();
-                comic = comicsArray.Length == 0 ? null : comicsArray[Random.Shared.Next(0, comicsArray.Length - 1)];
-                break;
-        }
-
+        var comic = FindComic(options.SearchQuery, options.SearchSelection);
         if (comic == null)
         {
             Console.Error.WriteLine($"No comic found for \"{options.SearchQuery}\"");
             Environment.Exit(1);
             return;
         }
-        
         Console.WriteLine($"Found Comic: {comic.Title}");
         
         var chapters = comic.GetChapters(options.Language).ToArray();
         if (chapters.Length == 0)
         {
-            Console.Error.WriteLine("No chapters found");
+            Console.Error.WriteLine($"No chapters found for comic \"{comic.Title}\"");
+            Environment.Exit(1);
+            return;
+        }
+        
+        var filteredChapters = FilterChapters(chapters, options.ScanlationGroup, options.AllowAlternateGroups);
+        if (filteredChapters.Count == 0)
+        {
+            Console.Error.WriteLine($"No chapters found for comic \"{comic.Title}\" with Scanlation Group {options.ScanlationGroup}");
+            Console.Error.WriteLine($"Try a different Scanlation Group or enable Alternate Groups with --allow-alternate");
             Environment.Exit(1);
             return;
         }
         
         if (options.DoSubfolder)
         {
-            outputDirectory = Path.Combine(outputDirectory,
+            options.OutputFolder = Path.Combine(options.OutputFolder,
                 String.Join("_", comic.Title.Split(Path.GetInvalidFileNameChars())));
-            Directory.CreateDirectory(outputDirectory);
+            Directory.CreateDirectory(options.OutputFolder);
+        }
+        
+        
+        var mylarSeriesPath = Path.Combine(options.OutputFolder, "series.json");
+        if (!File.Exists(mylarSeriesPath) || (File.Exists(mylarSeriesPath) && options.Overwrite))
+            using (var fs = new FileStream(Path.Combine(options.OutputFolder, "series.json"), FileMode.Create))
+                JsonSerializer.Serialize(fs,
+                    MetadataMylar.FromComicInfo(comic.ComicInfo, () => filteredChapters.First().Value.GetPages().First().Url),
+                    MylarJsonContext.Default.Options);
+        
+        var fileIndex = 1;
+        foreach (var (chapterIndex, chapter) in filteredChapters)
+        {
+            if (chapter.GroupName == null || chapter.GroupName.Length == 0)
+                chapter.GroupName = ["UNKNOWN"];
+            
+            DownloadChapter(chapter, Path.Combine(
+                options.OutputFolder,
+                String.Join("_", $"[{fileIndex++:0000}]_Chapter_{chapterIndex}_[{chapter.GroupName.First()}].{
+                    options.Format switch {
+                        OutputFormat.CBZ => "cbz",
+                        OutputFormat.PDF => "pdf",
+                        _ => throw new ArgumentOutOfRangeException(options.Format.ToString(), $"{options.Format.ToString()} is not a valid output format") }
+                }"
+                    .Split(Path.GetInvalidFileNameChars())
+                )
+            ), options.Format, options.Overwrite);
+        }
+        Console.WriteLine($"\nDownloaded Manga: {comic.Title} [{filteredChapters.Count} Chapters]");
+    }
+
+    private static CommandLineOptions ValidateCommandLine(ParserResult<CommandLineOptions> optionsResult)
+    {
+        foreach (var error in optionsResult.Errors)
+        {
+            switch (error.Tag)
+            {
+                case ErrorType.UnknownOptionError:
+                    Console.Error.WriteLine("Unknown command line argument");
+                    break;
+                case ErrorType.RepeatedOptionError:
+                    Console.Error.WriteLine("Command line argument specified multiple times");
+                    break;
+                case ErrorType.MissingRequiredOptionError:
+                    Console.Error.WriteLine("Required command line argument not present");
+                    break;
+                default:
+                    Console.Error.WriteLine("Error parsing command line arguments");
+                    break;
+            }
+
+            Environment.Exit(1);
+            return null;
         }
 
-        Dictionary<string, IChapter> chaptersToTake = [];
+        var options = optionsResult.Value;
 
+        if (!Connectors.Any(pair => options.Source.Equals(pair.Key, StringComparison.CurrentCultureIgnoreCase)))
+        {
+            Console.WriteLine(HelpText.AutoBuild(optionsResult, t => t, e => e));
+            Console.WriteLine($"Source \"{options.Source}\" does not exist");
+            Environment.Exit(1);
+            return null;
+        }
+        
+        options.OutputFolder = options.OutputFolder
+            .Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)).Replace("//", "/")
+            .Replace("\\", "/");
+        
+        if (!Directory.Exists(options.OutputFolder))
+            Directory.CreateDirectory(options.OutputFolder);
+        
+        return options;
+    }
+
+    private static IComic? FindComic(string searchQuery, SearchSelectionType searchType)
+    {
+        var comics= Connector.SearchComics(searchQuery).ToArray();
+        if (searchQuery == searchQuery.ToLower())
+            searchQuery = string.Concat(searchQuery[0].ToString().ToUpper(), searchQuery.AsSpan(1));
+        
+        return searchType switch
+        {
+            SearchSelectionType.Exact => comics.FirstOrDefault(c => c.Title.Equals(searchQuery)),
+            SearchSelectionType.First => comics.FirstOrDefault(),
+            SearchSelectionType.Random => comics.ElementAt(Random.Shared.Next(0, comics.Length)),
+            _ => null
+        };
+    }
+
+    private static Dictionary<string, IChapter> FilterChapters(IChapter[] chapters, string preferredGroup, bool useAlternateGroup)
+    {
+        Dictionary<string, IChapter> chaptersToTake = new();
+        
         foreach (var chapter in chapters)
         {
             if(chaptersToTake.ContainsKey(chapter.ChapterIndex ?? "0"))
                 continue;
-            if (chapter.GroupName == null || !chapter.GroupName.Contains(options.ScanlationGroup))
+            if (chapter.GroupName == null || !chapter.GroupName.Contains(preferredGroup))
             {
                 var foundProperChapter = false;
                 foreach (var otherChapter in chapters)
                     if (otherChapter.GroupName != null && chapter.ChapterIndex == otherChapter.ChapterIndex &&
-                        otherChapter.GroupName.Contains(options.ScanlationGroup))
+                        otherChapter.GroupName.Contains(preferredGroup))
                     {
                         foundProperChapter = true;
                         break;
                     }
-                if(foundProperChapter)
+                if(foundProperChapter || !useAlternateGroup)
                     continue;
             }
-            if (String.IsNullOrEmpty(chapter.Title))
+            if (string.IsNullOrEmpty(chapter.Title))
             {
                 foreach (var otherChapter in chapters)
                     if (chapter.ChapterIndex == otherChapter.ChapterIndex && !String.IsNullOrEmpty(otherChapter.Title))
                         chapter.Title = otherChapter.Title;
-                if (String.IsNullOrEmpty(chapter.Title))
+                if (string.IsNullOrEmpty(chapter.Title))
                     chapter.Title = $"Chapter {chapter.ChapterIndex ?? "0"}";
             }
             chaptersToTake[chapter.ChapterIndex ?? "0"] = chapter;
         }
 
-        var comicInfo = chapters.First().GetComicInfo();
-        var mylarSeriesPath = Path.Combine(outputDirectory, "series.json");
-        if (!File.Exists(mylarSeriesPath) || (File.Exists(mylarSeriesPath) && options.Overwrite))
-            using (var fs = new FileStream(Path.Combine(outputDirectory, "series.json"), FileMode.Create))
-                JsonSerializer.Serialize(fs, new MylarSeries
-                {
-                    Metadata = new MylarSeries.MylarMetadata
-                    {
-                        Type = "comicSeries",
-                        AgeRating = comicInfo.AgeRating.GetMylarDescription(),
-                        BookType = "Print",
-                        ComicId = comicInfo.Identifier,
-                        Year = comicInfo.Year ?? DateTime.Now.Year,
-                        CoverImageUrl = comicInfo.CoverUrl ?? chapters.First().GetPages().ToArray().First().Url,
-                        TotalIssues = comicInfo.Count ?? chaptersToTake.Count,
-                        Description = comic.Description?.ReplaceLineEndings("") ?? "",
-                        Name = comic.Title,
-                        DescriptionHtml = null,
-                        Volume = null,
-                        Imprint = null,
-                        PublicationRun = $"{comicInfo.Year}",
-                        Status = comicInfo.Status.GetMylarDescription(),
-                        Publisher = comicInfo.Publisher,
-                    }
-                }, MylarJsonContext.Default.Options);
+        return chaptersToTake;
+    }
 
-        foreach (var (_, chapter) in chaptersToTake)
+    private static void DownloadChapter(IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
+    {
+        var comickRackMetadata = chapter.GetComicRackMetadata();
+
+        if (File.Exists(outputFilePath))
         {
-            if (chapter.GroupName == null || chapter.GroupName.Length == 0)
-                chapter.GroupName = ["UNKNOWN"];
+            if (!overwrite)
+                return;
+            File.Delete(outputFilePath);
         }
+        
+        Console.Write("\r" + new string(' ', Console.BufferWidth) + "\r");
+        Console.Write($"Downloading Chapter {chapter.ChapterIndex} : {chapter.Title}");
+        
+        string tempDownloadDirectory = GetTempDirectory();
+        
+        var pages = chapter.GetPages();
+        var pageMap = new Dictionary<string, IPage>();
 
-        var chapterCounter = 1;
-        foreach (var (chapterIndex, chapter) in chaptersToTake)
+        using (var cts = new CancellationTokenSource())
         {
-            var outputFilePath = Path.Combine(
-                outputDirectory,
-                String.Join("_", $"[{chapterCounter++:0000}]_Chapter_{chapterIndex}_[{chapter.GroupName!.First()}].{
-                    options.Format switch {
-                        OutputFormat.CBZ => "cbz",
-                        OutputFormat.PDF => "pdf",
-                        _ => throw new NotSupportedException($"Format {options.Format} is not supported for file output")
-                    }
-                }"
-                    .Split(Path.GetInvalidFileNameChars())
-                )
-                );
-            
-            if (File.Exists(outputFilePath))
+            try
             {
-                if (!options.Overwrite)
-                    continue;
-                File.Delete(outputFilePath);
-            }
-            
-            Console.Write("\r" + new string(' ', Console.BufferWidth) + "\r");
-            Console.Write($"Downloading Chapter {chapterIndex} : {chapter.Title}");
-            
-            string tempDownloadDirectory = GetTempDirectory();
-            
-            var pages = chapter.GetPages();
-            var pageMap = new Dictionary<string, IPage>();
-
-            using (var cts = new CancellationTokenSource())
-            {
-                try
-                {
-                    Parallel.ForAsync(0, pages.Length, new ParallelOptions()
+                Parallel.ForAsync(0, pages.Length, new ParallelOptions()
+                    {
+                        MaxDegreeOfParallelism = 2,
+                        CancellationToken = cts.Token
+                    },
+                    async (i, token) =>
+                    {
+                        var page = pages[i];
+                        var failCount = 0;
+                        while (true)
                         {
-                            MaxDegreeOfParallelism = 2,
-                            CancellationToken = cts.Token
-                        },
-                        async (i, token) =>
-                        {
-                            var page = pages[i];
-                            var failCount = 0;
-                            while (true)
+                            try
                             {
-                                try
+                                var response = await Connector.GetClient().GetAsync(page.Url, token);
+                                if (response.StatusCode != HttpStatusCode.OK)
+                                    throw new Exception("Incorrect Status Code");
+                                var path = Path.Combine(tempDownloadDirectory,
+                                    $"{i + 1:000000}{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
+                                pageMap[path] = page;
+                                await using var fs = new FileStream(path, FileMode.CreateNew);
+                                await response.Content.CopyToAsync(fs, token);
+                                break;
+                            }
+                            catch
+                            {
+                                failCount++;
+                                if (failCount == 1)
+                                    Console.WriteLine();
+                                if (failCount == 3)
                                 {
-                                    var response = await Connector.GetClient().GetAsync(page.Url, token);
-                                    if (response.StatusCode != HttpStatusCode.OK)
-                                        throw new Exception("Incorrect Status Code");
-                                    var path = Path.Combine(tempDownloadDirectory,
-                                        $"{i + 1:000000}{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
-                                    pageMap[path] = page;
-                                    await using var fs = new FileStream(path, FileMode.CreateNew);
-                                    await response.Content.CopyToAsync(fs, token);
+                                    Console.Error.WriteLine(
+                                        $"Failed to request page {i + 1} three times, chapter {chapter.ChapterIndex} will be missing.");
+                                    await cts.CancelAsync();
                                     break;
                                 }
-                                catch
+
+                                var sleep = failCount switch
                                 {
-                                    failCount++;
-                                    if (failCount == 1)
-                                        Console.WriteLine();
-                                    if (failCount == 3)
-                                    {
-                                        Console.Error.WriteLine(
-                                            $"Failed to request page {i + 1} three times, chapter {chapter.ChapterIndex} will be missing.");
-                                        await cts.CancelAsync();
-                                        break;
-                                    }
-
-                                    var sleep = failCount switch
-                                    {
-                                        1 => 1,
-                                        2 => 10
-                                    };
-                                    Console.Error.WriteLine(
-                                        $"Failed to request page {i + 1}, retrying in {sleep} seconds.");
-                                    await Task.Delay(sleep * 1000, token);
-                                }
+                                    1 => 1,
+                                    2 => 10
+                                };
+                                Console.Error.WriteLine(
+                                    $"Failed to request page {i + 1}, retrying in {sleep} seconds.");
+                                await Task.Delay(sleep * 1000, token);
                             }
-                        }).GetAwaiter().GetResult();
-                }
-                catch {}
-
-
-                if (cts.IsCancellationRequested)
-                    continue;
-            }
-            
-            switch (options.Format)
-            {
-                case OutputFormat.CBZ:
-                    using (var fs = new FileStream(
-                               Path.Combine(tempDownloadDirectory,
-                                   "ComicInfo.xml"),
-                               FileMode.CreateNew
-                           ))
-                        ComicInfo.Serializer.Serialize(fs, chapter.GetComicInfo());
-            
-                    ZipFile.CreateFromDirectory(tempDownloadDirectory, outputFilePath);
-                    break;
-                case OutputFormat.PDF:
-                    var document = new PdfDocument();
-                    document.Language = comicInfo.LanguageISO;
-                    document.Options.ColorMode = PdfColorMode.Rgb;
-                    document.Info.Title = comicInfo.Title;
-                    document.Info.Author = comicInfo.Writer;
-                    document.Info.Creator = "MangaCLI.Net";
-                    document.Info.Subject = comicInfo.Series;
-                    
-                    foreach (var file in Directory.EnumerateFiles(tempDownloadDirectory))
-                    {
-                        var page = document.AddPage();
-                        page.Width = pageMap[file].Width;
-                        page.Height = pageMap[file].Height;
-                        page.Orientation = pageMap[file].Width > pageMap[file].Height
-                            ? PageOrientation.Landscape
-                            : PageOrientation.Portrait;
-                        
-                        using var gfx = XGraphics.FromPdfPage(page);
-
-                        XImage img;
-                        try
-                        {
-                            img = XImage.FromFile(Path.Combine(tempDownloadDirectory, file));
                         }
-                        catch
-                        {
-                            using var imageStream = new MemoryStream();
-                            using var imageFile = Image.Load(Path.Combine(tempDownloadDirectory, file));
-                            imageFile.SaveAsBmp(imageStream);
-                            img = XImage.FromStream(imageStream);
-                        }
-                        gfx.DrawImage(img, 0, 0, pageMap[file].Width, pageMap[file].Height);
-                        img.Dispose();
-                    }
-                    document.Save(outputFilePath);
-                    break;
-                default:
-                    throw new NotSupportedException($"Format {options.Format} is not supported for file output");
+                    }).GetAwaiter().GetResult();
             }
-            Directory.Delete(tempDownloadDirectory, true);
+            catch {}
+
+
+            if (cts.IsCancellationRequested)
+                return;
         }
-        Console.WriteLine($"\nDownloaded Manga: {comic.Title} [{chaptersToTake.Count} Chapters]");
+        
+        switch (outputFormat)
+        {
+            case OutputFormat.CBZ:
+                using (var fs = new FileStream(
+                           Path.Combine(tempDownloadDirectory,
+                               "ComicInfo.xml"),
+                           FileMode.CreateNew
+                       ))
+                    MetadataComicRack.Serializer.Serialize(fs, comickRackMetadata);
+        
+                ZipFile.CreateFromDirectory(tempDownloadDirectory, outputFilePath);
+                break;
+            case OutputFormat.PDF:
+                var document = new PdfDocument();
+                document.Language = comickRackMetadata.LanguageISO;
+                document.Options.ColorMode = PdfColorMode.Rgb;
+                document.Info.Title = comickRackMetadata.Title;
+                document.Info.Author = comickRackMetadata.Writer;
+                document.Info.Creator = "MangaCLI.Net";
+                document.Info.Subject = comickRackMetadata.Series;
+                
+                foreach (var file in Directory.EnumerateFiles(tempDownloadDirectory))
+                {
+                    var page = document.AddPage();
+                    page.Width = pageMap[file].Width;
+                    page.Height = pageMap[file].Height;
+                    page.Orientation = pageMap[file].Width > pageMap[file].Height
+                        ? PageOrientation.Landscape
+                        : PageOrientation.Portrait;
+                    
+                    using var gfx = XGraphics.FromPdfPage(page);
+
+                    XImage img;
+                    try
+                    {
+                        img = XImage.FromFile(Path.Combine(tempDownloadDirectory, file));
+                    }
+                    catch
+                    {
+                        using var imageStream = new MemoryStream();
+                        using var imageFile = Image.Load(Path.Combine(tempDownloadDirectory, file));
+                        imageFile.SaveAsBmp(imageStream);
+                        img = XImage.FromStream(imageStream);
+                    }
+                    gfx.DrawImage(img, 0, 0, pageMap[file].Width, pageMap[file].Height);
+                    img.Dispose();
+                }
+                document.Save(outputFilePath);
+                break;
+        }
+        Directory.Delete(tempDownloadDirectory, true);
     }
     
     private static string GetTempDirectory()

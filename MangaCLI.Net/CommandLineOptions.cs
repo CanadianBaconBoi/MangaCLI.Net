@@ -70,6 +70,11 @@ class CommandLineOptions
         Required = true,
         HelpText = "Search query")]
     public string SearchQuery { get; set; }
+    
+    [Option("allow-alternate",
+        Default = false,
+        HelpText = "Allow the use of alternate scanlation groups for chapter search")]
+    public bool AllowAlternateGroups { get; set; }
 }
 
 public enum SearchSelectionType

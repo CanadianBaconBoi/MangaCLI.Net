@@ -43,28 +43,67 @@ public class ComickComic: IComic
     public string? CoverUrl { get; init; }
 
     [JsonIgnore]
-    private ComickComicInfo? _comicInfo;
+    private ComickComicInfo? _comicInfoRaw;
 
     [JsonIgnore]
-    public ComickComicInfo ComicInfo
+    private ComickComicInfo RawComicInfo =>
+        _comicInfoRaw ??= MangaCli.Connector.GetClient().GetFromJsonAsync<ComickComicInfo>(
+            ComickConnector.BaseApiUrl.Combine($"/comic/{Slug}?tachiyomi=true"),
+            ComickJsonContext.Default.Options
+        ).GetAwaiter().GetResult()!;
+
+    [JsonIgnore]
+    private ComicInfo? _comicInfo;
+
+    [JsonIgnore]
+    public ComicInfo ComicInfo => _comicInfo ??= new ComicInfo()
     {
-        get
+        Identifier = int.Parse(RawComicInfo.Comic.Links.FirstOrDefault(link => link.Key == "al").Value ?? "0"),
+        
+        Authors = RawComicInfo.Authors.Select(author => author.Name).ToArray(),
+        Artists = RawComicInfo.Artists.Select(artist => artist.Name).ToArray(),
+        Publishers =
+            RawComicInfo.Comic.ExtraComicInfo?.Publishers.Select(publisher => publisher.Publisher.Name).ToArray() ?? [],
+
+        Title = RawComicInfo.Comic.Title,
+        Country = RawComicInfo.Comic.Country,
+        Status = RawComicInfo.Comic.Status switch
         {
-            if(_comicInfo == null)
-            {
-                var comicInfoUrl = ComickConnector.BaseApiUrl.Combine($"/comic/{Slug}?tachiyomi=true");
-
-                _comicInfo = MangaCli.Connector.GetClient().GetFromJsonAsync<ComickComicInfo>(
-                    comicInfoUrl,
-                    ComickJsonContext.Default.Options
-                ).GetAwaiter().GetResult();
-            }
-
-            return _comicInfo!;
-        }
-    }
+            2 => Manga.ComicInfo.StatusType.Ended,
+            1 => Manga.ComicInfo.StatusType.Continuing,
+            _ => Manga.ComicInfo.StatusType.Unknown
+        },
+        Links = RawComicInfo.Comic.Links,
+        TotalChapters = RawComicInfo.Comic.TotalChapters ?? 0,
+        TotalVolumes = (int)MathF.Floor(float.Parse(RawComicInfo.Comic.FinalVolume ?? "0")),
+        Description = RawComicInfo.Comic.Description ?? "",
+        DescriptionHtml = RawComicInfo.Comic.ParsedDecsription ?? "",
+        Year = RawComicInfo.Comic.Year ?? DateTime.Now.Year,
+        Month = DateTime.Now.Month, //TODO: Implement metadata lookup with Anilist
+        Day = DateTime.Now.Day, //TODO: Implement metadata lookup with Anilist
+        CommunityRating = float.Parse(RawComicInfo.Comic.Rating),
+        AgeRating = RawComicInfo.Comic.ContentRating switch
+        {
+            ComickComicInfo.ComicInfo.ComickContentRating.Safe => Manga.ComicInfo.AgeRatingType.Everyone,
+            ComickComicInfo.ComicInfo.ComickContentRating.Suggestive => Manga.ComicInfo.AgeRatingType.Teen,
+            ComickComicInfo.ComicInfo.ComickContentRating.Erotica => Manga.ComicInfo.AgeRatingType.X18,
+            _ => Manga.ComicInfo.AgeRatingType.Unknown
+        },
+        AlternateTitles = RawComicInfo.Comic.Titles.DistinctBy(title => title.Language).Select(title => (title.Language, title.Title)).ToDictionary(),
+        Genres = RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Genre" or "Theme").Select(genre => genre.Genre.Name).ToArray(),
+        Tags = RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Format").Select(genre => genre.Genre.Name).ToArray(),
+        Categories = RawComicInfo.Comic.ExtraComicInfo?.ComicCategories.Where(category => category.Upvotes > category.Downvotes).Select(category => category.ComicCategory.Name).ToArray() ?? [],
+        Covers = RawComicInfo.Comic.Covers.Select(cover => (cover.Volume, new ComicInfo.ImageType()
+        {
+            Width = cover.Width,
+            Height = cover.Height,
+            Location = new Uri(ComickConnector.BaseImageUrl, cover.ImageKey)
+        })).ToDictionary()
+    };
+    
     
     IEnumerable<IChapter> IComic.GetChapters(string language) => GetChapters(language);
+
     public IEnumerable<ComickChapter> GetChapters(string language)
     {
         var chaptersUrl = ComickConnector.BaseApiUrl.Combine($"/comic/{Identifier}/chapters?lang={language}&chap-order=1&limit=50");

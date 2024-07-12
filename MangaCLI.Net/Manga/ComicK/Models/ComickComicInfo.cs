@@ -45,8 +45,12 @@ public class ComickComicInfo
         public Dictionary<string, string> Links { get; init; }
         [JsonPropertyName("last_chapter")]
         public float? TotalChapters { get; init; }
+        [JsonPropertyName("final_volume")]
+        public string? FinalVolume { get; init; }
         [JsonPropertyName("desc")]
         public string? Description { get; init; }
+        [JsonPropertyName("parsed")]
+        public string? ParsedDecsription { get; init; }
         [JsonPropertyName("year")]
         public int? Year { get; init; }
         [JsonPropertyName("bayesian_rating")]

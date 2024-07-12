@@ -24,7 +24,7 @@ namespace MangaCLI.Net.Manga.ComicK.Models;
 public class ComickPage: IPage
 {
     [JsonPropertyName("url")]
-    public string Url { get; init; }
+    public Uri Url { get; init; }
     
     [JsonPropertyName("w")]
     public int Width { get; init; }
