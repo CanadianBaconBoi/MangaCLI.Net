@@ -1,0 +1,67 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: .NET Release
+
+on: [push, workflow_dispatch]
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Publish Linux x64
+      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r linux-x64 -o publish-lx64/ --no-restore
+    - name: Publish Linux Arm64
+      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r linux-arm64 -o publish-la64/ --no-restore
+    - name: Publish Windows x64
+      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r win-x64 -o publish-wx64/ --no-restore
+    - name: Publish Windows Arm64
+      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r win-arm64 -o publish-wa64/ --no-restore
+      
+    - name: Rename Files
+      run: |
+        mkdir publish
+        mv publish-lx64/MangaCLI.Net publish/MangaCLI.Net-linux-x64
+        mv publish-la64/MangaCLI.Net publish/MangaCLI.Net-linux-arm64
+        mv publish-wx64/MangaCLI.Net.exe publish/MangaCLI.Net-windows-x64.exe
+        mv publish-wa64/MangaCLI.Net.exe publish/MangaCLI.Net-windows-arm64.exe
+        
+    - name: Upload Linux x64
+      uses: actions/upload-artifact@v4.3.4
+      with:
+        name: MangaCLI.Net-linux-x64
+        path: publish/MangaCLI.Net-linux-x64
+    - name: Upload Linux Arm64
+      uses: actions/upload-artifact@v4.3.4
+      with:
+        name: MangaCLI.Net-linux-arm64
+        path: publish/MangaCLI.Net-linux-arm64
+    - name: Upload Windows x64
+      uses: actions/upload-artifact@v4.3.4
+      with:
+        name: MangaCLI.Net-windows-x64.exe
+        path: publish/MangaCLI.Net-windows-x64.exe
+    - name: Upload Windows Arm64
+      uses: actions/upload-artifact@v4.3.4
+      with:
+        name: MangaCLI.Net-windows-arm64.exe
+        path: publish/MangaCLI.Net-windows-arm64.exe
+    
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        generate_release_notes: true
+        files: |
+          publish/MangaCLI.Net-linux-x64
+          publish/MangaCLI.Net-linux-arm64
+          publish/MangaCLI.Net-windows-x64.exe
+          publish/MangaCLI.Net-windows-arm64.exe
