@@ -102,7 +102,7 @@ public class ComickComicInfo
         public class ComickCover
         {
             [JsonPropertyName("vol")]
-            public string Volume { get; init; }
+            public string? Volume { get; init; }
             [JsonPropertyName("w")]
             public int Width { get; init; }
             [JsonPropertyName("h")]

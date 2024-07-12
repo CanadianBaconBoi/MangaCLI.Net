@@ -53,18 +53,18 @@ class CommandLineOptions
         Default = "en",
         HelpText = "Language to use when searching for chapters (en/jp/ko/...)")]
     public string Language { get; set; }
-    [Option("subfolder",
-        Default = YesNo.Yes,
-        HelpText = "Create a subfolder for manga (Yes/No)")]
-    public YesNo DoSubfolder { get; set; }
+    [Option("no-subfolder",
+        Default = false,
+        HelpText = "Don't create a subfolder for manga")]
+    public bool NoSubfolder { get; set; }
     [Option("overwrite",
-        Default = YesNo.No,
-        HelpText = "Overwrite existing manga with the same name (Yes/No)")]
-    public YesNo Overwrite { get; set; }
-    [Option("allow-alternate",
-        Default = YesNo.Yes,
-        HelpText = "Allow the use of alternate scanlation groups for chapter search for missing chapters (Yes/No)")]
-    public YesNo AllowAlternateGroups { get; set; }
+        Default = false,
+        HelpText = "Overwrite existing manga with the same name")]
+    public bool Overwrite { get; set; }
+    [Option("disallow-alternate",
+        Default = false,
+        HelpText = "Disallow the use of alternate scanlation groups for chapter search for missing chapters")]
+    public bool DisallowAlternateGroups { get; set; }
 }
 
 public enum SearchSelectionType
@@ -75,12 +75,6 @@ public enum SearchSelectionType
 public enum OutputFormat
 {
     PDF, CBZ
-}
-
-public enum YesNo
-{
-    Yes,
-    No
 }
 
 #pragma warning restore CS8618

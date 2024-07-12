@@ -16,12 +16,12 @@
     - (Default: CBZ) The format to download manga as (CBZ/PDF) <sub>(EPUB coming soon)</sub>
 - -l, --language
     - (Default: en) Language to use when searching for chapters (en/jp/ko/...)
-- --subfolder
-    - (Default: Yes) Create a subfolder for manga (Yes/No)
+- --no-subfolder
+    - Don't create a subfolder for manga
 - --overwrite
-    - (Default: No) Overwrite existing mangas with the same name (Yes/No)
-- --allow-alternate
-    - (Default: Yes) Allow the use of alternate scanlation groups for chapter search for missing chapters (Yes/No)
+    - Overwrite existing mangas with the same name
+- --disallow-alternate
+    - Disallow the use of alternate scanlation groups for chapter search for missing chapters
 ## Supported Sources:
 - ComicK
 - (Planned) MangaDex

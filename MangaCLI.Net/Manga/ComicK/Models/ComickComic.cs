@@ -93,7 +93,7 @@ public class ComickComic: IComic
         Genres = RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Genre" or "Theme").Select(genre => genre.Genre.Name).ToArray(),
         Tags = RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Format").Select(genre => genre.Genre.Name).ToArray(),
         Categories = RawComicInfo.Comic.ExtraComicInfo?.ComicCategories.Where(category => category.Upvotes > category.Downvotes).Select(category => category.ComicCategory.Name).ToArray() ?? [],
-        Covers = RawComicInfo.Comic.Covers.Select(cover => (cover.Volume, new ComicInfo.ImageType()
+        Covers = RawComicInfo.Comic.Covers.DistinctBy(cover => cover.Volume).Select(cover => (cover.Volume ?? "1", new ComicInfo.ImageType()
         {
             Width = cover.Width,
             Height = cover.Height,

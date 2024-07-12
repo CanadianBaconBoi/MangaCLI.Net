@@ -66,7 +66,7 @@ static class MangaCli
             return;
         }
         
-        var filteredChapters = FilterChapters(chapters, options.ScanlationGroup, options.AllowAlternateGroups == YesNo.Yes);
+        var filteredChapters = FilterChapters(chapters, options.ScanlationGroup, !options.DisallowAlternateGroups);
         if (filteredChapters.Count == 0)
         {
             Console.Error.WriteLine($"No chapters found for comic \"{comic.Title}\" with Scanlation Group {options.ScanlationGroup}");
@@ -75,7 +75,7 @@ static class MangaCli
             return;
         }
         
-        if (options.DoSubfolder == YesNo.Yes)
+        if (!options.NoSubfolder)
         {
             options.OutputFolder = Path.Combine(options.OutputFolder,
                 String.Join("_", comic.Title.Split(Path.GetInvalidFileNameChars())));
@@ -84,7 +84,7 @@ static class MangaCli
         
         
         var mylarSeriesPath = Path.Combine(options.OutputFolder, "series.json");
-        if (!File.Exists(mylarSeriesPath) || (File.Exists(mylarSeriesPath) && options.Overwrite == YesNo.Yes))
+        if (!File.Exists(mylarSeriesPath) || (File.Exists(mylarSeriesPath) && options.Overwrite))
             using (var fs = new FileStream(Path.Combine(options.OutputFolder, "series.json"), FileMode.Create))
                 JsonSerializer.Serialize(fs,
                     MetadataMylar.FromComicInfo(comic.ComicInfo, () => filteredChapters.First().Value.GetPages().First().Url),
@@ -106,7 +106,7 @@ static class MangaCli
                 }"
                     .Split(Path.GetInvalidFileNameChars())
                 )
-            ), options.Format, options.Overwrite == YesNo.Yes);
+            ), options.Format, options.Overwrite);
         }
         Console.WriteLine($"\nDownloaded Manga: {comic.Title} [{filteredChapters.Count} Chapters]");
     }
