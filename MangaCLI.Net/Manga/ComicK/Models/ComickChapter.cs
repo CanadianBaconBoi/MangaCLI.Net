@@ -35,7 +35,7 @@ public class ComickChapter: IChapter
     public string? ChapterIndex { get; init; }
     
     [JsonPropertyName("vol")]
-    public string? VolumeIndex { get; init; }
+    public string? VolumeIndex { get; set; }
 
     [JsonPropertyName("group_name")]
     public string[]? GroupName { get; set; }

@@ -23,6 +23,7 @@ public interface IChapter
     public string? Title { get; set; }
     public string Identifier { get; init; }
     public string? ChapterIndex { get; init; }
+    public string? VolumeIndex { get; set; }
     public string[]? GroupName { get; set; }
 
     public IPage[] GetPages();

@@ -199,6 +199,10 @@ static class MangaCli
                 if (string.IsNullOrEmpty(chapter.Title))
                     chapter.Title = $"Chapter {chapter.ChapterIndex ?? "0"}";
             }
+            if (string.IsNullOrEmpty(chapter.VolumeIndex))
+                foreach (var otherChapter in chapters)
+                    if (chapter.ChapterIndex == otherChapter.ChapterIndex && !String.IsNullOrEmpty(otherChapter.VolumeIndex))
+                        chapter.VolumeIndex = otherChapter.VolumeIndex;
             chaptersToTake[chapter.ChapterIndex ?? "0"] = chapter;
         }
 
