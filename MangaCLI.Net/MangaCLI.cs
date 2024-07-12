@@ -17,6 +17,7 @@
 #endregion
 
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Net;
 using System.Reflection;
@@ -43,6 +44,7 @@ static class MangaCli
         { "ComicK", () => new ComickConnector() }
     };
     
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandLineOptions))]
     public static void Main(string[] args)
     {
         var options = ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
@@ -208,7 +210,7 @@ static class MangaCli
 
         return chaptersToTake;
     }
-
+    
     private static void DownloadChapter(IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
     {
         if (File.Exists(outputFilePath))
@@ -288,56 +290,57 @@ static class MangaCli
                 return;
         }
         
-        switch (outputFormat)
-        {
-            case OutputFormat.CBZ:
-                using (var fs = new FileStream(
-                           Path.Combine(tempDownloadDirectory,
-                               "ComicInfo.xml"),
-                           FileMode.CreateNew
-                       ))
-                    MetadataComicRack.Serializer.Serialize(fs, comickRackMetadata);
+        using(var ofs = new FileStream(outputFilePath, FileMode.Create))
+            switch (outputFormat)
+            {
+                case OutputFormat.CBZ:
+                    using (var fs = new FileStream(
+                               Path.Combine(tempDownloadDirectory,
+                                   "ComicInfo.xml"),
+                               FileMode.CreateNew
+                           ))
+                        MetadataComicRack.Serializer.Serialize(fs, comickRackMetadata);
         
-                ZipFile.CreateFromDirectory(tempDownloadDirectory, outputFilePath);
-                break;
-            case OutputFormat.PDF:
-                var document = new PdfDocument();
-                document.Language = comickRackMetadata.LanguageISO;
-                document.Options.ColorMode = PdfColorMode.Rgb;
-                document.Info.Title = comickRackMetadata.Title;
-                document.Info.Author = comickRackMetadata.Writer;
-                document.Info.Creator = "MangaCLI.Net";
-                document.Info.Subject = comickRackMetadata.Series;
+                    ZipFile.CreateFromDirectory(tempDownloadDirectory, ofs);
+                    break;
+                case OutputFormat.PDF:
+                    var document = new PdfDocument();
+                    document.Language = comickRackMetadata.LanguageISO;
+                    document.Options.ColorMode = PdfColorMode.Rgb;
+                    document.Info.Title = comickRackMetadata.Title;
+                    document.Info.Author = comickRackMetadata.Writer;
+                    document.Info.Creator = "MangaCLI.Net";
+                    document.Info.Subject = comickRackMetadata.Series;
                 
-                foreach (var file in Directory.EnumerateFiles(tempDownloadDirectory))
-                {
-                    var page = document.AddPage();
-                    page.Width = pageMap[file].Width;
-                    page.Height = pageMap[file].Height;
-                    page.Orientation = pageMap[file].Width > pageMap[file].Height
-                        ? PageOrientation.Landscape
-                        : PageOrientation.Portrait;
+                    foreach (var file in Directory.EnumerateFiles(tempDownloadDirectory))
+                    {
+                        var page = document.AddPage();
+                        page.Width = pageMap[file].Width;
+                        page.Height = pageMap[file].Height;
+                        page.Orientation = pageMap[file].Width > pageMap[file].Height
+                            ? PageOrientation.Landscape
+                            : PageOrientation.Portrait;
                     
-                    using var gfx = XGraphics.FromPdfPage(page);
+                        using var gfx = XGraphics.FromPdfPage(page);
 
-                    XImage img;
-                    try
-                    {
-                        img = XImage.FromFile(Path.Combine(tempDownloadDirectory, file));
+                        XImage img;
+                        try
+                        {
+                            img = XImage.FromFile(Path.Combine(tempDownloadDirectory, file));
+                        }
+                        catch
+                        {
+                            using var imageStream = new MemoryStream();
+                            using var imageFile = Image.Load(Path.Combine(tempDownloadDirectory, file));
+                            imageFile.SaveAsBmp(imageStream);
+                            img = XImage.FromStream(imageStream);
+                        }
+                        gfx.DrawImage(img, 0, 0, pageMap[file].Width, pageMap[file].Height);
+                        img.Dispose();
                     }
-                    catch
-                    {
-                        using var imageStream = new MemoryStream();
-                        using var imageFile = Image.Load(Path.Combine(tempDownloadDirectory, file));
-                        imageFile.SaveAsBmp(imageStream);
-                        img = XImage.FromStream(imageStream);
-                    }
-                    gfx.DrawImage(img, 0, 0, pageMap[file].Width, pageMap[file].Height);
-                    img.Dispose();
-                }
-                document.Save(outputFilePath);
-                break;
-        }
+                    document.Save(ofs);
+                    break;
+            }
         Directory.Delete(tempDownloadDirectory, true);
     }
     

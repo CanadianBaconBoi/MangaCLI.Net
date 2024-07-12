@@ -23,7 +23,7 @@ namespace MangaCLI.Net.Manga;
 #pragma warning disable CS8618
 public class MetadataComicRack
 {
-    public static XmlSerializer Serializer = XmlSerializer.FromTypes([typeof(MetadataComicRack)]).First()!;
+    public static readonly XmlSerializer Serializer = new(typeof(MetadataComicRack));
     
     
     public string Title;

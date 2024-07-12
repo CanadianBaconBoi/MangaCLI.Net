@@ -23,8 +23,6 @@ namespace MangaCLI.Net;
 #pragma warning disable CS8618
 class CommandLineOptions
 {
-    public CommandLineOptions()
-    { }
     [Option('q', "query",
         Required = true,
         HelpText = "Search query to use when finding manga")]

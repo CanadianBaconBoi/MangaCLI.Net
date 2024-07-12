@@ -1,0 +1,6 @@
+<linker>
+    <assembly fullname="PdfSharp">
+        <namespace fullname="PdfSharp.Pdf" />
+        <namespace fullname="PdfSharp.Pdf.Advanced" />
+    </assembly>
+</linker>
