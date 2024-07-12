@@ -73,31 +73,17 @@ public class ComickChapter: IChapter
 
         MetadataComicRack.ComicPageInfo[] pages = new MetadataComicRack.ComicPageInfo[PageCount];
         
-        using (var cts = new CancellationTokenSource())
+        for (int i = 0; i < PageCount; i++)
         {
-            try
+            pages[i] = new MetadataComicRack.ComicPageInfo()
             {
-                Parallel.ForAsync(0, PageCount, new ParallelOptions()
-                    {
-                        MaxDegreeOfParallelism = 2,
-                        CancellationToken = cts.Token
-                    },
-                    async (i, token) =>
-                    {
-                        pages[i] = new MetadataComicRack.ComicPageInfo()
-                        {
-                            Image = i + 1,
-                            Type = MetadataComicRack.ComicPageType.Story,
-                            DoublePage = Pages![i].Width > Pages[i].Height,
-                            ImageSize = (await MangaCli.Connector.GetClient()
-                                .SendAsync(new HttpRequestMessage(HttpMethod.Head, Pages[i].Url), token))
-                                .Content.Headers.ContentLength.GetValueOrDefault(0),
-                            ImageWidth = Pages[i].Width,
-                            ImageHeight = Pages[i].Height
-                        };
-                    });
-            }
-            catch { }
+                Image = i + 1,
+                Type = MetadataComicRack.ComicPageType.Story,
+                DoublePage = Pages![i].Width > Pages[i].Height,
+                ImageSize = 0,
+                ImageWidth = Pages[i].Width,
+                ImageHeight = Pages[i].Height
+            };
         }
 
         if (!int.TryParse(VolumeIndex, out var volumeIndex))

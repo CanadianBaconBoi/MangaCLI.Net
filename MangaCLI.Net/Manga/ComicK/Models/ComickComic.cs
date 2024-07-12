@@ -47,7 +47,8 @@ public class ComickComic: IComic
 
     [JsonIgnore]
     private ComickComicInfo RawComicInfo =>
-        _comicInfoRaw ??= MangaCli.Connector.GetClient().GetFromJsonAsync<ComickComicInfo>(
+        _comicInfoRaw ??= MangaCli.Connector.
+            GetClient().GetFromJsonAsync<ComickComicInfo>(
             ComickConnector.BaseApiUrl.Combine($"/comic/{Slug}?tachiyomi=true"),
             ComickJsonContext.Default.Options
         ).GetAwaiter().GetResult()!;

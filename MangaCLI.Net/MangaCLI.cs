@@ -248,6 +248,7 @@ static class MangaCli
                                 var response = await Connector.GetClient().GetAsync(page.Url, token);
                                 if (response.StatusCode != HttpStatusCode.OK)
                                     throw new Exception("Incorrect Status Code");
+                                comickRackMetadata.Pages[i].ImageSize = response.Content.Headers.ContentLength.GetValueOrDefault(0);
                                 var path = Path.Combine(tempDownloadDirectory,
                                     $"{i + 1:000000}{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
                                 pageMap[path] = page;
