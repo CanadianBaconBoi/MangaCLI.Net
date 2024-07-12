@@ -207,14 +207,14 @@ static class MangaCli
 
     private static void DownloadChapter(IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
     {
-        var comickRackMetadata = chapter.GetComicRackMetadata();
-
         if (File.Exists(outputFilePath))
         {
             if (!overwrite)
                 return;
             File.Delete(outputFilePath);
         }
+
+        var comickRackMetadata = chapter.GetComicRackMetadata();
         
         Console.Write("\r" + new string(' ', Console.BufferWidth) + "\r");
         Console.Write($"Downloading Chapter {chapter.ChapterIndex} : {chapter.Title}");
