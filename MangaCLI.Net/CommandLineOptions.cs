@@ -47,14 +47,14 @@ class CommandLineOptions
     public string OutputFolder { get; set; }
     
     [Option("subfolder",
-        Default = true,
+        Default = YesNo.Yes,
         HelpText = "Create subfolder in output folder?")]
-    public bool DoSubfolder { get; set; }
+    public YesNo DoSubfolder { get; set; }
     
     [Option("overwrite",
-        Default = false,
+        Default = YesNo.No,
         HelpText = "Should overwrite existing mangas with same name?")]
-    public bool Overwrite { get; set; }
+    public YesNo Overwrite { get; set; }
     
     [Option('m', "manga",
         Default = SearchSelectionType.First,
@@ -72,9 +72,9 @@ class CommandLineOptions
     public string SearchQuery { get; set; }
     
     [Option("allow-alternate",
-        Default = false,
+        Default = YesNo.Yes,
         HelpText = "Allow the use of alternate scanlation groups for chapter search")]
-    public bool AllowAlternateGroups { get; set; }
+    public YesNo AllowAlternateGroups { get; set; }
 }
 
 public enum SearchSelectionType
@@ -86,4 +86,11 @@ public enum OutputFormat
 {
     PDF, CBZ
 }
+
+public enum YesNo
+{
+    Yes,
+    No
+}
+
 #pragma warning restore CS8618
