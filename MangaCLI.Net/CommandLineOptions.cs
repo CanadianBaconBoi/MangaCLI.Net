@@ -25,55 +25,45 @@ class CommandLineOptions
 {
     public CommandLineOptions()
     { }
-    
-    [Option('S', "source",
-        Default = "ComicK",
-        HelpText = "The source to pull manga from (one of ComicK)")]
-    public string Source { get; set; }
-    
-    [Option('G', "group",
-        Default = "Official",
-        HelpText = "Preferred group for scanlation")]
-    public string ScanlationGroup { get; set; }
-    
-    [Option('F', "format",
-        Default = OutputFormat.CBZ,
-        HelpText = "The format to write when download manga (one of cbz, pdf)")]
-    public OutputFormat Format { get; set; }
-    
-    [Option('O', "output",
-        Default = "~/Documents/Manga",
-        HelpText = "The output folder to place the downloads in")]
-    public string OutputFolder { get; set; }
-    
-    [Option("subfolder",
-        Default = YesNo.Yes,
-        HelpText = "Create subfolder in output folder?")]
-    public YesNo DoSubfolder { get; set; }
-    
-    [Option("overwrite",
-        Default = YesNo.No,
-        HelpText = "Should overwrite existing mangas with same name?")]
-    public YesNo Overwrite { get; set; }
-    
-    [Option('m', "manga",
-        Default = SearchSelectionType.First,
-        HelpText = "Which manga to select from search (one of First, Random, Exact)")]
-    public SearchSelectionType SearchSelection { get; set; }
-    
-    [Option('l', "language",
-        Default = "en",
-        HelpText = "Language to use when searching for chapters")]
-    public string Language { get; set; }
-    
     [Option('q', "query",
         Required = true,
-        HelpText = "Search query")]
+        HelpText = "Search query to use when finding manga")]
     public string SearchQuery { get; set; }
-    
+    [Option('m', "manga",
+        Default = SearchSelectionType.First,
+        HelpText = "Which manga to select from search (First/Random/Exact)")]
+    public SearchSelectionType SearchSelection { get; set; }
+    [Option('S', "source",
+        Default = "ComicK",
+        HelpText = "The source to download manga from (ComicK/...)")]
+    public string Source { get; set; }
+    [Option('G', "group",
+        Default = "Official",
+        HelpText = "Preferred group for scanlations")]
+    public string ScanlationGroup { get; set; }
+    [Option('O', "output",
+        Default = "~/Documents/Manga",
+        HelpText = "The folder to download manga into")]
+    public string OutputFolder { get; set; }
+    [Option('F', "format",
+        Default = OutputFormat.CBZ,
+        HelpText = "The format to download manga as (CBZ/PDF)")]
+    public OutputFormat Format { get; set; }
+    [Option('l', "language",
+        Default = "en",
+        HelpText = "Language to use when searching for chapters (en/jp/ko/...)")]
+    public string Language { get; set; }
+    [Option("subfolder",
+        Default = YesNo.Yes,
+        HelpText = "Create a subfolder for manga (Yes/No)")]
+    public YesNo DoSubfolder { get; set; }
+    [Option("overwrite",
+        Default = YesNo.No,
+        HelpText = "Overwrite existing manga with the same name (Yes/No)")]
+    public YesNo Overwrite { get; set; }
     [Option("allow-alternate",
         Default = YesNo.Yes,
-        HelpText = "Allow the use of alternate scanlation groups for chapter search")]
+        HelpText = "Allow the use of alternate scanlation groups for chapter search for missing chapters (Yes/No)")]
     public YesNo AllowAlternateGroups { get; set; }
 }
 
