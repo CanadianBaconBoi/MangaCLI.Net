@@ -61,9 +61,9 @@ public class ComickChapter: IChapter
     private IPage[] GetPages()
     {
         // ReSharper disable once CoVariantArrayConversion
-        return Pages ??= MangaCli.Connector.GetClient().GetFromJsonAsync<ComickChapterWrapper>(
+        return Pages ??= MangaCli.Connector.GetClient().GetFromJsonAsync(
             ComickConnector.BaseApiUrl.Combine($"/chapter/{Identifier}?tachiyomi=true"),
-            ComickJsonContext.Default.Options).GetAwaiter().GetResult()?.Chapter.Pages ?? [];
+            ComickJsonContext.Default.ComickChapterWrapper).GetAwaiter().GetResult()?.Chapter.Pages ?? [];
     }
     
     public MetadataComicRack GetComicRackMetadata()
@@ -111,7 +111,7 @@ public class ComickChapter: IChapter
             Publisher = string.Join(',', Owner.ComicInfo.Publishers),
             Genre = string.Join(',', Owner.ComicInfo.Genres),
             Tags = string.Join(',', Owner.ComicInfo.Tags.Concat(Owner.ComicInfo.Categories)),
-            Web = Owner.ComicInfo.Links.Select(link =>
+            Web = Owner.ComicInfo.Links?.Select(link =>
                     {
                         switch (link.Key)
                         {
@@ -129,7 +129,7 @@ public class ComickChapter: IChapter
                                 return link.Value;
                         }
                         return string.Empty;
-                    }).First()
+                    }).First() ?? string.Empty
             ,
             PageCount = PageCount,
             LanguageISO = Language,

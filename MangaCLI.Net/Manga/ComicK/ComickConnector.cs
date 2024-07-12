@@ -45,9 +45,9 @@ public class ComickConnector : IConnector
 
     IEnumerable<IComic> IConnector.SearchComics(string searchQuery) => SearchComics(searchQuery);
 
-    public IEnumerable<ComickComic> SearchComics(string searchQuery) => _httpClient.GetFromJsonAsync<ComickComic[]>(
+    private IEnumerable<ComickComic> SearchComics(string searchQuery) => _httpClient.GetFromJsonAsync(
         BaseApiUrl.Combine($"/v1.0/search/?type=comic&page=1&limit=50&tachiyomi=true&sort=view&showall=false&q={searchQuery}"),
-            ComickJsonContext.Default.Options
+            ComickJsonContext.Default.ComickComicArray
             ).GetAwaiter().GetResult() ?? [];
 }
 

@@ -70,6 +70,8 @@ public enum SearchSelectionType
     First, Random, Exact
 }
 
+
+// ReSharper disable InconsistentNaming
 public enum OutputFormat
 {
     PDF, CBZ

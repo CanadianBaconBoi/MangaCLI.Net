@@ -20,18 +20,19 @@ using System.ComponentModel;
 
 namespace MangaCLI.Net.Manga;
 
+// ReSharper disable InconsistentNaming
 public class ComicInfo
 {
     public int Identifier;
     
-    public string[] Authors;
-    public string[] Artists;
-    public string[] Publishers;
+    public string[] Authors = [];
+    public string[] Artists = [];
+    public string[] Publishers = [];
 
-    public string Title;
-    public string Country;
+    public string Title = string.Empty;
+    public string? Country;
     public StatusType Status;
-    public Dictionary<string, string> Links;
+    public Dictionary<string, string>? Links;
     public float? TotalChapters; //TODO: Implement Metadata Lookup with Anilist
     public int? TotalVolumes; //TODO: Implement Metadata Lookup with Anilist
     public string? Description;
@@ -41,11 +42,11 @@ public class ComicInfo
     public int Day;
     public float CommunityRating;
     public AgeRatingType AgeRating;
-    public Dictionary<string, string> AlternateTitles;
-    public string[] Genres;
-    public string[] Tags;
-    public string[] Categories;
-    public Dictionary<string, ImageType> Covers;
+    public Dictionary<string, string>? AlternateTitles;
+    public string[] Genres = [];
+    public string[] Tags = [];
+    public string[] Categories = [];
+    public Dictionary<string, ImageType>? Covers;
     
     public enum AgeRatingType
     {

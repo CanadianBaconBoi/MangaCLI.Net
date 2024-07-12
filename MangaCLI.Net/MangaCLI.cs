@@ -20,7 +20,6 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Net;
-using System.Reflection;
 using System.Text.Json;
 using CommandLine;
 using CommandLine.Text;
@@ -90,7 +89,7 @@ static class MangaCli
             using (var fs = new FileStream(Path.Combine(options.OutputFolder, "series.json"), FileMode.Create))
                 JsonSerializer.Serialize(fs,
                     MetadataMylar.FromComicInfo(comic.ComicInfo, () => filteredChapters.First().Value.GetPages().First().Url),
-                    MylarJsonContext.Default.Options);
+                    MylarJsonContext.Default.MetadataMylar);
         
         var fileIndex = 1;
         foreach (var (chapterIndex, chapter) in filteredChapters)
@@ -210,7 +209,8 @@ static class MangaCli
 
         return chaptersToTake;
     }
-    
+
+    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "All members are referenced")]
     private static void DownloadChapter(IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
     {
         if (File.Exists(outputFilePath))
@@ -265,26 +265,29 @@ static class MangaCli
                                     Console.WriteLine();
                                 if (failCount == 3)
                                 {
-                                    Console.Error.WriteLine(
+                                    await Console.Error.WriteLineAsync(
                                         $"Failed to request page {i + 1} three times, chapter {chapter.ChapterIndex} will be missing.");
+                                    // ReSharper disable once AccessToDisposedClosure
                                     await cts.CancelAsync();
                                     break;
                                 }
 
+                                #pragma warning disable CS8509
                                 var sleep = failCount switch
+                                #pragma warning restore CS8509
                                 {
                                     1 => 1,
                                     2 => 10
                                 };
-                                Console.Error.WriteLine(
+                                await Console.Error.WriteLineAsync(
                                     $"Failed to request page {i + 1}, retrying in {sleep} seconds.");
                                 await Task.Delay(sleep * 1000, token);
                             }
                         }
                     }).GetAwaiter().GetResult();
             }
+            // ReSharper disable once EmptyGeneralCatchClause
             catch {}
-
 
             if (cts.IsCancellationRequested)
                 return;
@@ -315,8 +318,8 @@ static class MangaCli
                     foreach (var file in Directory.EnumerateFiles(tempDownloadDirectory))
                     {
                         var page = document.AddPage();
-                        page.Width = pageMap[file].Width;
-                        page.Height = pageMap[file].Height;
+                        page.Width = XUnit.FromPoint(pageMap[file].Width);
+                        page.Height = XUnit.FromPoint(pageMap[file].Height);
                         page.Orientation = pageMap[file].Width > pageMap[file].Height
                             ? PageOrientation.Landscape
                             : PageOrientation.Portrait;
@@ -335,7 +338,7 @@ static class MangaCli
                             imageFile.SaveAsBmp(imageStream);
                             img = XImage.FromStream(imageStream);
                         }
-                        gfx.DrawImage(img, 0, 0, pageMap[file].Width, pageMap[file].Height);
+                        gfx.DrawImage(img, new XRect(new XPoint(0, 0), new XVector(pageMap[file].Width, pageMap[file].Height)));
                         img.Dispose();
                     }
                     document.Save(ofs);
@@ -365,33 +368,27 @@ internal static class UriExtensions
     internal static Uri CombineRaw(this Uri self, Uri other) => new Uri($"{self}{other}");
 }
 
-internal static class EnumExtensions
+internal static class EnumDescriptionExtension
 {
-    public static string GetDescription<T>(this T enumerationValue)
+    public static string GetDescription<T>(this T enumerationValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumerationType)
         where T : Enum
     {
-        Type type = enumerationValue.GetType();
-        MemberInfo[] memberInfo = type.GetMember(enumerationValue.ToString());
-        if (memberInfo.Length > 0)
-        {
-            object[] attrs = memberInfo[0].GetCustomAttributes(typeof(DescriptionAttribute), false);
-            if (attrs.Length > 0)
-                return ((DescriptionAttribute)attrs[0]).Description;
-        }
-        return enumerationValue.ToString();
+        if (enumerationValue.GetType() != enumerationType)
+            throw new TypeAccessException("Type passed to GetDescription is not equal to type of value passed");
+        return enumerationType
+            .GetField(enumerationValue.ToString())
+            ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+            .SingleOrDefault() is not DescriptionAttribute attribute ? enumerationValue.ToString() : attribute.Description;
     }
     
-    public static string GetMylarDescription<T>(this T enumerationValue)
+    public static string GetMylarDescription<T>(this T enumerationValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumerationType)
         where T : Enum
     {
-        Type type = enumerationValue.GetType();
-        MemberInfo[] memberInfo = type.GetMember(enumerationValue.ToString());
-        if (memberInfo.Length > 0)
-        {
-            object[] attrs = memberInfo[0].GetCustomAttributes(typeof(MylarDescriptionAttribute), false);
-            if (attrs.Length > 0)
-                return ((MylarDescriptionAttribute)attrs[0]).Description;
-        }
-        return enumerationValue.ToString();
+        if (enumerationValue.GetType() != enumerationType)
+            throw new TypeAccessException("Type passed to GetMylarDescription is not equal to type of value passed");
+        return enumerationType
+            .GetField(enumerationValue.ToString())
+            ?.GetCustomAttributes(typeof(MylarDescriptionAttribute), false)
+            .SingleOrDefault() is not MylarDescriptionAttribute attribute ? enumerationValue.ToString() : attribute.Description;
     }
 }

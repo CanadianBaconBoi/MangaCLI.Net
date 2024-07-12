@@ -46,7 +46,7 @@ public class MetadataMylar
         [JsonPropertyName("description_text")]
         public string? Description { get; init; }
         [JsonPropertyName("description_formatted")]
-        public string? DescriptionHtml { get; init; }
+        public string? DescriptionFormatted { get; init; }
         [JsonPropertyName("volume")]
         public int? Volume { get; init; }
         [JsonPropertyName("booktype")]
@@ -67,22 +67,22 @@ public class MetadataMylar
     {
         return new MetadataMylar
         {
-            Metadata = new MetadataMylar.MylarMetadata
+            Metadata = new MylarMetadata
             {
                 Type = "comicSeries",
-                AgeRating = comicInfo.AgeRating.GetMylarDescription(),
+                AgeRating = comicInfo.AgeRating.GetMylarDescription(typeof(ComicInfo.AgeRatingType)),
                 BookType = "Print",
                 ComicId = comicInfo.Identifier,
                 Year = comicInfo.Year,
-                CoverImageUrl = (comicInfo.Covers.FirstOrDefault().Value.Location ?? alternateCover()).ToString(),
+                CoverImageUrl = (comicInfo.Covers?.FirstOrDefault().Value.Location ?? alternateCover()).ToString(),
                 TotalIssues = (int)MathF.Floor(comicInfo.TotalChapters ?? 0),
                 Description = comicInfo.Description?.ReplaceLineEndings(""),
-                DescriptionHtml = comicInfo.DescriptionHtml,
+                DescriptionFormatted = comicInfo.Description,
                 Name = comicInfo.Title,
                 Volume = comicInfo.TotalVolumes,
                 Imprint = null,
                 PublicationRun = $"{comicInfo.Year}",
-                Status = comicInfo.Status.GetMylarDescription(),
+                Status = comicInfo.Status.GetMylarDescription(typeof(ComicInfo.StatusType)),
                 Publisher = string.Join(", ", comicInfo.Publishers),
             }
         };
@@ -92,8 +92,8 @@ public class MetadataMylar
 [JsonSerializable(typeof(MetadataMylar))]
 internal partial class MylarJsonContext : JsonSerializerContext;
 
-partial class MylarDescriptionAttribute: DescriptionAttribute
+class MylarDescriptionAttribute: DescriptionAttribute
 {
-    public MylarDescriptionAttribute(string description) => this.DescriptionValue = description;
+    public MylarDescriptionAttribute(string description) => DescriptionValue = description;
 }
 #pragma warning restore CS8618

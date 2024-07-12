@@ -48,9 +48,9 @@ public class ComickComic: IComic
     [JsonIgnore]
     private ComickComicInfo RawComicInfo =>
         _comicInfoRaw ??= MangaCli.Connector.
-            GetClient().GetFromJsonAsync<ComickComicInfo>(
+            GetClient().GetFromJsonAsync(
             ComickConnector.BaseApiUrl.Combine($"/comic/{Slug}?tachiyomi=true"),
-            ComickJsonContext.Default.Options
+            ComickJsonContext.Default.ComickComicInfo
         ).GetAwaiter().GetResult()!;
 
     [JsonIgnore]
@@ -70,9 +70,9 @@ public class ComickComic: IComic
         Country = RawComicInfo.Comic.Country,
         Status = RawComicInfo.Comic.Status switch
         {
-            2 => Manga.ComicInfo.StatusType.Ended,
-            1 => Manga.ComicInfo.StatusType.Continuing,
-            _ => Manga.ComicInfo.StatusType.Unknown
+            2 => ComicInfo.StatusType.Ended,
+            1 => ComicInfo.StatusType.Continuing,
+            _ => ComicInfo.StatusType.Unknown
         },
         Links = RawComicInfo.Comic.Links,
         TotalChapters = RawComicInfo.Comic.TotalChapters ?? 0,
@@ -85,10 +85,10 @@ public class ComickComic: IComic
         CommunityRating = float.Parse(RawComicInfo.Comic.Rating),
         AgeRating = RawComicInfo.Comic.ContentRating switch
         {
-            ComickComicInfo.ComicInfo.ComickContentRating.Safe => Manga.ComicInfo.AgeRatingType.Everyone,
-            ComickComicInfo.ComicInfo.ComickContentRating.Suggestive => Manga.ComicInfo.AgeRatingType.Teen,
-            ComickComicInfo.ComicInfo.ComickContentRating.Erotica => Manga.ComicInfo.AgeRatingType.X18,
-            _ => Manga.ComicInfo.AgeRatingType.Unknown
+            ComickComicInfo.ComicInfo.ComickContentRating.Safe => ComicInfo.AgeRatingType.Everyone,
+            ComickComicInfo.ComicInfo.ComickContentRating.Suggestive => ComicInfo.AgeRatingType.Teen,
+            ComickComicInfo.ComicInfo.ComickContentRating.Erotica => ComicInfo.AgeRatingType.X18,
+            _ => ComicInfo.AgeRatingType.Unknown
         },
         AlternateTitles = RawComicInfo.Comic.Titles.DistinctBy(title => title.Language).Select(title => (title.Language, title.Title)).ToDictionary(),
         Genres = RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Genre" or "Theme").Select(genre => genre.Genre.Name).ToArray(),
@@ -113,9 +113,9 @@ public class ComickComic: IComic
         var page = 1;
         do
         {
-            chapters = MangaCli.Connector.GetClient().GetFromJsonAsync<ComickChapters>(
+            chapters = MangaCli.Connector.GetClient().GetFromJsonAsync(
                 chaptersUrl.CombineRaw($"&page={page++}"),
-                ComickJsonContext.Default.Options
+                ComickJsonContext.Default.ComickChapters
             ).GetAwaiter().GetResult();
             
             if (chapters == null) break;

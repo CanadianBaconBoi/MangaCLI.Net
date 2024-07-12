@@ -16,15 +16,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endregion
 
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Xml.Serialization;
 
 namespace MangaCLI.Net.Manga;
 
+// ReSharper disable InconsistentNaming
 #pragma warning disable CS8618
 public class MetadataComicRack
 {
+    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "All members are referenced")]
     public static readonly XmlSerializer Serializer = new(typeof(MetadataComicRack));
-    
     
     public string Title;
     public string Series;
@@ -90,8 +93,16 @@ public class MetadataComicRack
     [XmlElement("AgeRating")]
     public string InternalAgeRating
     {
-        get => AgeRating.GetDescription();
-        set {}
+        get => AgeRating.GetDescription(typeof(ComicInfo.AgeRatingType));
+        set
+        {
+            var field = typeof(ComicInfo.AgeRatingType).GetFields().SingleOrDefault(
+                field => field.GetCustomAttributes(typeof(DescriptionAttribute), false).SingleOrDefault()
+                    is DescriptionAttribute attribute && attribute.Description == value
+            );
+            if(field != null)
+                AgeRating = (ComicInfo.AgeRatingType)Enum.Parse(typeof(ComicInfo.AgeRatingType), field.Name);
+        }
     }
 
     [XmlIgnore]
