@@ -23,9 +23,9 @@ using System.Xml.Serialization;
 namespace MangaCLI.Net.Manga;
 
 // ReSharper disable InconsistentNaming
-#pragma warning disable CS8618
 public class MetadataComicRack
 {
+    #pragma warning disable CS8618
     [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "All members are referenced")]
     public static readonly XmlSerializer Serializer = new(typeof(MetadataComicRack));
     
@@ -159,5 +159,5 @@ public class MetadataComicRack
         Other,
         Deleted
     }
+    #pragma warning restore CS8618
 }
-#pragma warning restore CS8618

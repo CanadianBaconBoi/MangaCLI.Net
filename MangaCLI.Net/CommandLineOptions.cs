@@ -20,9 +20,9 @@ using CommandLine;
 
 namespace MangaCLI.Net;
 
-#pragma warning disable CS8618
 class CommandLineOptions
 {
+    #pragma warning disable CS8618
     [Option('q', "query",
         Required = true,
         HelpText = "Search query to use when finding manga")]
@@ -63,6 +63,7 @@ class CommandLineOptions
         Default = false,
         HelpText = "Disallow the use of alternate scanlation groups for chapter search for missing chapters")]
     public bool DisallowAlternateGroups { get; set; }
+    #pragma warning restore CS8618
 }
 
 public enum SearchSelectionType
@@ -77,4 +78,3 @@ public enum OutputFormat
     PDF, CBZ
 }
 
-#pragma warning restore CS8618

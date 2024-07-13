@@ -16,6 +16,9 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endregion
 
+using AniListNet;
+using AniListNet.Objects;
+
 namespace MangaCLI.Net.Manga;
 
 public interface IComic
@@ -26,6 +29,11 @@ public interface IComic
     public string? Description { get; init; }
     public string? CoverThumbnail { get; init; }
     public string? CoverUrl { get; init; }
+    public Media? AnilistInfo { get; }
+    public AniPagination<StaffEdge>? AnilistStaff { get; }
+    public AniPagination<CharacterEdge>? AnilistCharacters { get; }
+    public AniPagination<MediaReview>? AnilistReviews { get; }
+
 
     public IEnumerable<IChapter> GetChapters(string language);
 

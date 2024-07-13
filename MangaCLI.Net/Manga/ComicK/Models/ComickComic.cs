@@ -18,12 +18,15 @@
 
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using AniListNet;
+using AniListNet.Objects;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace MangaCLI.Net.Manga.ComicK.Models;
 
-#pragma warning disable CS8618
 public class ComickComic: IComic
 {
+    #pragma warning disable CS8618
     [JsonPropertyName("title")]
     public string Title { get; init; }
     
@@ -41,6 +44,7 @@ public class ComickComic: IComic
     
     [JsonIgnore]
     public string? CoverUrl { get; init; }
+    #pragma warning restore CS8618
 
     [JsonIgnore]
     private ComickComicInfo? _comicInfoRaw;
@@ -63,25 +67,31 @@ public class ComickComic: IComic
         
         Authors = RawComicInfo.Authors.Select(author => author.Name).ToArray(),
         Artists = RawComicInfo.Artists.Select(artist => artist.Name).ToArray(),
-        Publishers =
-            RawComicInfo.Comic.ExtraComicInfo?.Publishers.Select(publisher => publisher.Publisher.Name).ToArray() ?? [],
+        Publishers = RawComicInfo.Comic.ExtraComicInfo?.Publishers.Select(publisher => publisher.Publisher.Name).ToArray() ?? [],
 
-        Title = RawComicInfo.Comic.Title,
-        Country = RawComicInfo.Comic.Country,
-        Status = RawComicInfo.Comic.Status switch
+        Title = AnilistInfo?.Title.EnglishTitle ?? RawComicInfo.Comic.Title,
+        Country = RawComicInfo.Comic.Country, //TODO: Find AniList Library with this info that doesn't suck
+        Status = AnilistInfo is {Status: var status}? status switch
+        {
+            MediaStatus.Releasing => ComicInfo.StatusType.Continuing,
+            MediaStatus.Hiatus => ComicInfo.StatusType.Continuing,
+            MediaStatus.Canceled => ComicInfo.StatusType.Ended,
+            MediaStatus.Finished => ComicInfo.StatusType.Ended,
+            _ => ComicInfo.StatusType.Unknown
+        } : RawComicInfo.Comic.Status switch
         {
             2 => ComicInfo.StatusType.Ended,
             1 => ComicInfo.StatusType.Continuing,
             _ => ComicInfo.StatusType.Unknown
         },
         Links = RawComicInfo.Comic.Links,
-        TotalChapters = RawComicInfo.Comic.TotalChapters ?? 0,
-        TotalVolumes = (int)MathF.Floor(float.Parse(RawComicInfo.Comic.FinalVolume ?? "0")),
-        Description = RawComicInfo.Comic.Description ?? "",
-        DescriptionHtml = RawComicInfo.Comic.ParsedDecsription ?? "",
-        Year = RawComicInfo.Comic.Year ?? DateTime.Now.Year,
-        Month = DateTime.Now.Month, //TODO: Implement metadata lookup with Anilist
-        Day = DateTime.Now.Day, //TODO: Implement metadata lookup with Anilist
+        TotalChapters = AnilistInfo?.Chapters ?? RawComicInfo.Comic.TotalChapters ?? 0,
+        TotalVolumes = AnilistInfo?.Volumes ?? (int)MathF.Floor(float.Parse(RawComicInfo.Comic.FinalVolume ?? "0")),
+        Description = RawComicInfo.Comic.Description ?? AnilistInfo?.Description ?? string.Empty,
+        DescriptionHtml = RawComicInfo.Comic.ParsedDecsription ?? AnilistInfo?.DescriptionHtml ?? string.Empty,
+        Year = AnilistInfo?.StartDate.Year ?? RawComicInfo.Comic.Year ?? DateTime.Now.Year,
+        Month = AnilistInfo?.StartDate.Month ?? DateTime.Now.Month,
+        Day = AnilistInfo?.StartDate.Day ?? DateTime.Now.Day,
         CommunityRating = float.Parse(RawComicInfo.Comic.Rating),
         AgeRating = RawComicInfo.Comic.ContentRating switch
         {
@@ -90,17 +100,64 @@ public class ComickComic: IComic
             ComickComicInfo.ComicInfo.ComickContentRating.Erotica => ComicInfo.AgeRatingType.X18,
             _ => ComicInfo.AgeRatingType.Unknown
         },
-        AlternateTitles = RawComicInfo.Comic.Titles.DistinctBy(title => title.Language).Select(title => (title.Language, title.Title)).ToDictionary(),
-        Genres = RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Genre" or "Theme").Select(genre => genre.Genre.Name).ToArray(),
-        Tags = RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Format").Select(genre => genre.Genre.Name).ToArray(),
-        Categories = RawComicInfo.Comic.ExtraComicInfo?.ComicCategories.Where(category => category.Upvotes > category.Downvotes).Select(category => category.ComicCategory.Name).ToArray() ?? [],
+        AlternateTitles = RawComicInfo.Comic.Titles.Concat(AnilistInfo is not null ? [
+                new ComickComicInfo.ComicInfo.ComickTitle {Language = "en", Title = AnilistInfo.Title.EnglishTitle ?? string.Empty},
+                new ComickComicInfo.ComicInfo.ComickTitle {Language = "ja", Title = AnilistInfo.Title.NativeTitle},
+                new ComickComicInfo.ComicInfo.ComickTitle {Language = "ja-ro", Title = AnilistInfo.Title.RomajiTitle}
+            ] : [])
+            .DistinctBy(title => title.Language).Select(title => (title.Language, title.Title)).ToDictionary(),
+        Genres = AnilistInfo?.Genres ?? RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Genre" or "Theme").Select(genre => genre.Genre.Name).ToArray(),
+        Tags = AnilistInfo?.GetTagsAsync().GetAwaiter().GetResult().Select(tag => tag.Name).ToArray() ?? RawComicInfo.Comic.Genres.Where(genre => genre.Genre.Group is "Format").Select(genre => genre.Genre.Name).Concat(RawComicInfo.Comic.ExtraComicInfo?.ComicCategories.Where(category => category.Upvotes > category.Downvotes).Select(category => category.ComicCategory.Name) ?? []).ToArray(),
         Covers = RawComicInfo.Comic.Covers.DistinctBy(cover => cover.Volume).Select(cover => (cover.Volume ?? "1", new ComicInfo.ImageType()
         {
             Width = cover.Width,
             Height = cover.Height,
             Location = new Uri(ComickConnector.BaseImageUrl, cover.ImageKey)
-        })).ToDictionary()
+        })).Concat(GetAnilistCover(AnilistInfo))
     };
+    
+    private IEnumerable<(string, ComicInfo.ImageType)> GetAnilistCover(Media? anilistInfo)
+    {
+        if (anilistInfo == null || string.IsNullOrEmpty(anilistInfo.Cover.ExtraLargeImageUrl.ToString()))
+            yield break;
+        
+        using var response = MangaCli.Connector.GetClient().Send(new HttpRequestMessage(HttpMethod.Get, anilistInfo.Cover.ExtraLargeImageUrl));
+        using var image = Image.Load(response.Content.ReadAsStream());
+        yield return ("0", new ComicInfo.ImageType()
+        {
+            Width = image.Width,
+            Height = image.Height,
+            Location = anilistInfo.Cover.ExtraLargeImageUrl
+        });
+    }
+    
+    private Media? _anilistInfo;
+
+    [JsonIgnore]
+    public Media? AnilistInfo
+    {
+        get
+        {
+            try
+            {
+                return _anilistInfo ??= MangaCli.AnilistClient.GetMediaAsync(
+                    int.Parse(RawComicInfo.Comic.Links.FirstOrDefault(link => link.Key == "al").Value ?? "0")
+                ).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+
+    private AniPagination<StaffEdge>? _anilistStaff;
+    public AniPagination<StaffEdge>? AnilistStaff => _anilistStaff ??= AnilistInfo?.GetStaffAsync().GetAwaiter().GetResult();
+    private AniPagination<CharacterEdge>? _anilistCharacters;
+    public AniPagination<CharacterEdge>? AnilistCharacters => _anilistCharacters ??= AnilistInfo?.GetCharactersAsync().GetAwaiter().GetResult();
+    private AniPagination<MediaReview>? _anilistReviews;
+    public AniPagination<MediaReview>? AnilistReviews => _anilistReviews ??= AnilistInfo?.GetReviewsAsync().GetAwaiter().GetResult();
+
     
     
     IEnumerable<IChapter> IComic.GetChapters(string language) => GetChapters(language);
@@ -128,4 +185,3 @@ public class ComickComic: IComic
         } while (x < chapters.Total);
     }
 }
-#pragma warning restore CS8618

@@ -20,9 +20,9 @@ using System.Text.Json.Serialization;
 
 namespace MangaCLI.Net.Manga.ComicK.Models;
 
-#pragma warning disable CS8618
 public class ComickChapters
 {
+    #pragma warning disable CS8618
     [JsonPropertyName("chapters")]
     public ComickChapter[] Chapters { get; init; }
     
@@ -31,5 +31,5 @@ public class ComickChapters
     
     [JsonPropertyName("limit")]
     public int Limit { get; init; }
+    #pragma warning restore CS8618
 }
-#pragma warning restore CS8618

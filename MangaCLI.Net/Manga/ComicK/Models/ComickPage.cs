@@ -20,9 +20,9 @@ using System.Text.Json.Serialization;
 
 namespace MangaCLI.Net.Manga.ComicK.Models;
 
-#pragma warning disable CS8618
 public class ComickPage: IPage
 {
+    #pragma warning disable CS8618
     [JsonPropertyName("url")]
     public Uri Url { get; init; }
     
@@ -31,5 +31,5 @@ public class ComickPage: IPage
     
     [JsonPropertyName("h")]
     public int Height { get; init; }
+    #pragma warning restore CS8618
 }
-#pragma warning restore CS8618

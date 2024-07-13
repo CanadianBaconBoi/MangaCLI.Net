@@ -33,8 +33,8 @@ public class ComicInfo
     public string? Country;
     public StatusType Status;
     public Dictionary<string, string>? Links;
-    public float? TotalChapters; //TODO: Implement Metadata Lookup with Anilist
-    public int? TotalVolumes; //TODO: Implement Metadata Lookup with Anilist
+    public float TotalChapters;
+    public int TotalVolumes;
     public string? Description;
     public string? DescriptionHtml;
     public int Year;
@@ -45,8 +45,7 @@ public class ComicInfo
     public Dictionary<string, string>? AlternateTitles;
     public string[] Genres = [];
     public string[] Tags = [];
-    public string[] Categories = [];
-    public Dictionary<string, ImageType>? Covers;
+    public IEnumerable<(string, ImageType)>? Covers;
     
     public enum AgeRatingType
     {

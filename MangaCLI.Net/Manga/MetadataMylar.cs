@@ -16,14 +16,14 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endregion
 
-using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 namespace MangaCLI.Net.Manga;
 
-#pragma warning disable CS8618
 public class MetadataMylar
 {
+    #pragma warning disable CS8618
     [JsonPropertyName("version")]
     public string Version = "1.0.2";
     [JsonPropertyName("metadata")]
@@ -62,6 +62,7 @@ public class MetadataMylar
         [JsonPropertyName("status")]
         public string Status { get; init; } // one of `Continuing` or `Ended`
     }
+    #pragma warning restore CS8618
 
     public static MetadataMylar FromComicInfo(ComicInfo comicInfo, Func<Uri> alternateCover)
     {
@@ -74,8 +75,8 @@ public class MetadataMylar
                 BookType = "Print",
                 ComicId = comicInfo.Identifier,
                 Year = comicInfo.Year,
-                CoverImageUrl = (comicInfo.Covers?.FirstOrDefault().Value.Location ?? alternateCover()).ToString(),
-                TotalIssues = (int)MathF.Floor(comicInfo.TotalChapters ?? 0),
+                CoverImageUrl = (comicInfo.Covers?.FirstOrDefault().Item2.Location ?? alternateCover()).ToString(),
+                TotalIssues = (int)MathF.Floor(comicInfo.TotalChapters),
                 Description = comicInfo.Description?.ReplaceLineEndings(""),
                 DescriptionFormatted = comicInfo.Description,
                 Name = comicInfo.Title,
@@ -92,8 +93,14 @@ public class MetadataMylar
 [JsonSerializable(typeof(MetadataMylar))]
 internal partial class MylarJsonContext : JsonSerializerContext;
 
-class MylarDescriptionAttribute: DescriptionAttribute
+[AttributeUsage(AttributeTargets.All)]
+sealed class MylarDescriptionAttribute(string description) : Attribute
 {
-    public MylarDescriptionAttribute(string description) => DescriptionValue = description;
+    public string Description => DescriptionValue;
+    private string DescriptionValue { get; } = description;
+
+    public override bool Equals([NotNullWhen(true)] object? obj) =>
+        obj is MylarDescriptionAttribute other && other.Description == Description;
+
+    public override int GetHashCode() => Description.GetHashCode();
 }
-#pragma warning restore CS8618

@@ -21,9 +21,9 @@ using System.Text.Json.Serialization;
 
 namespace MangaCLI.Net.Manga.ComicK.Models;
 
-#pragma warning disable CS8618
 public class ComickComicInfo
 {
+    #pragma warning disable CS8618
     [JsonPropertyName("comic")]
     public ComicInfo Comic { get; init; }
     
@@ -156,5 +156,5 @@ public class ComickComicInfo
         [JsonPropertyName("name")]
         public string Name { get; init; }
     }
+    #pragma warning restore CS8618
 }
-#pragma warning restore CS8618

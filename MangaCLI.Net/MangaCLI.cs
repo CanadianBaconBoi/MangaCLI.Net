@@ -21,6 +21,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Net;
 using System.Text.Json;
+using AniListNet;
 using CommandLine;
 using CommandLine.Text;
 using MangaCLI.Net.Manga;
@@ -30,6 +31,7 @@ using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
 
 namespace MangaCLI.Net;
 
@@ -38,6 +40,9 @@ static class MangaCli
     
     public static IConnector Connector = null!;
 
+    public static AniClient AnilistClient = new();
+    
+    
     private static readonly Dictionary<string, Func<IConnector>> Connectors = new()
     {
         { "ComicK", () => new ComickConnector() }
@@ -86,10 +91,23 @@ static class MangaCli
         
         var mylarSeriesPath = Path.Combine(options.OutputFolder, "series.json");
         if (!File.Exists(mylarSeriesPath) || (File.Exists(mylarSeriesPath) && options.Overwrite))
-            using (var fs = new FileStream(Path.Combine(options.OutputFolder, "series.json"), FileMode.Create))
+            using (var fs = new FileStream(mylarSeriesPath, FileMode.Create))
                 JsonSerializer.Serialize(fs,
                     MetadataMylar.FromComicInfo(comic.ComicInfo, () => filteredChapters.First().Value.GetPages().First().Url),
                     MylarJsonContext.Default.MetadataMylar);
+
+
+        if (comic.ComicInfo.Covers?.FirstOrDefault() is { } cover)
+        {
+            var response = Connector.GetClient().GetAsync(cover.Item2.Location).GetAwaiter().GetResult();
+            if (response.StatusCode != HttpStatusCode.OK)
+                throw new Exception("Incorrect Status Code");
+            var coverPath = Path.Combine(options.OutputFolder,
+                $"cover{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
+            if (!File.Exists(coverPath) || (File.Exists(coverPath) && options.Overwrite))
+                using (var fs = new FileStream(coverPath, FileMode.Create))
+                    response.Content.CopyTo(fs, null, CancellationToken.None);
+        }
         
         var fileIndex = 1;
         foreach (var (chapterIndex, chapter) in filteredChapters)
@@ -251,11 +269,21 @@ static class MangaCli
                                 if (response.StatusCode != HttpStatusCode.OK)
                                     throw new Exception("Incorrect Status Code");
                                 comickRackMetadata.Pages[i].ImageSize = response.Content.Headers.ContentLength.GetValueOrDefault(0);
-                                var path = Path.Combine(tempDownloadDirectory,
-                                    $"{i + 1:000000}{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
-                                pageMap[path] = page;
-                                await using var fs = new FileStream(path, FileMode.CreateNew);
-                                await response.Content.CopyToAsync(fs, token);
+                                if (response.Content.Headers.ContentType?.MediaType == "image/webp")
+                                {
+                                    var path = Path.Combine(tempDownloadDirectory, $"{i + 1:000000}.png");
+                                    using var image = await Image.LoadAsync(await response.Content.ReadAsStreamAsync(token), token);
+                                    await using var fs = new FileStream(path, FileMode.CreateNew);
+                                    await image.SaveAsync(fs, PngFormat.Instance, token);
+                                }
+                                else
+                                {
+                                    var path = Path.Combine(tempDownloadDirectory,
+                                        $"{i + 1:000000}{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
+                                    pageMap[path] = page;
+                                    await using var fs = new FileStream(path, FileMode.CreateNew);
+                                    await response.Content.CopyToAsync(fs, token);
+                                }
                                 break;
                             }
                             catch
@@ -378,7 +406,7 @@ internal static class EnumDescriptionExtension
         return enumerationType
             .GetField(enumerationValue.ToString())
             ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
-            .SingleOrDefault() is not DescriptionAttribute attribute ? enumerationValue.ToString() : attribute.Description;
+            .FirstOrDefault(attr => attr is DescriptionAttribute) is DescriptionAttribute attribute ? attribute.Description : enumerationValue.ToString();
     }
     
     public static string GetMylarDescription<T>(this T enumerationValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumerationType)
@@ -389,6 +417,6 @@ internal static class EnumDescriptionExtension
         return enumerationType
             .GetField(enumerationValue.ToString())
             ?.GetCustomAttributes(typeof(MylarDescriptionAttribute), false)
-            .SingleOrDefault() is not MylarDescriptionAttribute attribute ? enumerationValue.ToString() : attribute.Description;
+            .FirstOrDefault(attr => attr is MylarDescriptionAttribute) is MylarDescriptionAttribute attribute ? attribute.Description : enumerationValue.ToString();
     }
 }

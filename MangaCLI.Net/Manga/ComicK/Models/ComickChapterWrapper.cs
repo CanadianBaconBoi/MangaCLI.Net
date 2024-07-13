@@ -20,9 +20,9 @@ using System.Text.Json.Serialization;
 
 namespace MangaCLI.Net.Manga.ComicK.Models;
 
-#pragma warning disable CS8618
 public class ComickChapterWrapper
 {
+    #pragma warning disable CS8618
     [JsonPropertyName("chapter")]
     public ComickFatChapter Chapter { get; init; }
     
@@ -31,5 +31,5 @@ public class ComickChapterWrapper
         [JsonPropertyName("images")]
         public ComickPage[] Pages { get; init; }
     }
+    #pragma warning restore CS8618
 }
-#pragma warning restore CS8618
