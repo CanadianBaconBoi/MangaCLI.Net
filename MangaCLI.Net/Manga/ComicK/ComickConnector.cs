@@ -1,4 +1,5 @@
 #region header
+
 // MangaCLI.Net : A Featureful Manga Downloader
 // Copyright (C)  2024 canadian
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Net.Http.Headers;
@@ -25,8 +27,8 @@ namespace MangaCLI.Net.Manga.ComicK;
 
 public class ComickConnector : IConnector
 {
-    internal static readonly Uri BaseApiUrl = new Uri("https://api.comick.fun");
-    internal static readonly Uri BaseImageUrl = new Uri("https://meo.comick.pictures");
+    internal static readonly Uri BaseApiUrl = new("https://api.comick.fun");
+    internal static readonly Uri BaseImageUrl = new("https://meo.comick.pictures");
 
     private readonly HttpClient _httpClient = new();
 
@@ -38,17 +40,15 @@ public class ComickConnector : IConnector
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "MangaCLI.Net Downloader");
     }
 
-    public HttpClient GetClient()
-    {
-        return _httpClient;
-    }
+    public HttpClient GetClient() => _httpClient;
 
     IEnumerable<IComic> IConnector.SearchComics(string searchQuery) => SearchComics(searchQuery);
 
-    private IEnumerable<ComickComic> SearchComics(string searchQuery) => _httpClient.GetFromJsonAsync(
-        BaseApiUrl.Combine($"/v1.0/search/?type=comic&page=1&limit=50&tachiyomi=true&sort=view&showall=false&q={searchQuery}"),
+    private IEnumerable<ComickComic> SearchComics(string searchQuery) =>
+        _httpClient.GetFromJsonAsync(
+            BaseApiUrl.Combine($"/v1.0/search/?type=comic&page=1&limit=50&tachiyomi=true&sort=view&showall=false&q={searchQuery}"),
             ComickJsonContext.Default.ComickComicArray
-            ).GetAwaiter().GetResult() ?? [];
+        ).GetAwaiter().GetResult() ?? [];
 }
 
 [JsonSerializable(typeof(ComickPage))]

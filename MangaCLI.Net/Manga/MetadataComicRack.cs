@@ -1,4 +1,5 @@
 #region header
+
 // MangaCLI.Net : A Featureful Manga Downloader
 // Copyright (C)  2024 canadian
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.ComponentModel;
@@ -25,47 +27,43 @@ namespace MangaCLI.Net.Manga;
 // ReSharper disable InconsistentNaming
 public class MetadataComicRack
 {
-    #pragma warning disable CS8618
-    [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "All members are referenced")]
+#pragma warning disable CS8618
+    [UnconditionalSuppressMessage("Trimming",
+        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
+        Justification = "All members are referenced")]
     public static readonly XmlSerializer Serializer = new(typeof(MetadataComicRack));
-    
+
     public string Title;
     public string Series;
     public string Number;
     public int? Count;
-    public bool ShouldSerializeCount() 
-    {
-        return Count.HasValue;
-    }
+
+    public bool ShouldSerializeCount() => Count.HasValue;
+
     public int? Volume;
-    public bool ShouldSerializeVolume() 
-    {
-        return Volume.HasValue;
-    }
+
+    public bool ShouldSerializeVolume() => Volume.HasValue;
+
     public string AlternateSeries;
     public string AlternateNumber;
     public int? AlternateCount;
-    public bool ShouldSerializeAlternateCount() 
-    {
-        return AlternateCount.HasValue;
-    }
+
+    public bool ShouldSerializeAlternateCount() => AlternateCount.HasValue;
+
     public string Summary;
     public string Notes;
     public int? Year;
-    public bool ShouldSerializeYear() 
-    {
-        return Year.HasValue;
-    }
+
+    public bool ShouldSerializeYear() => Year.HasValue;
+
     public int? Month;
-    public bool ShouldSerializeMonth() 
-    {
-        return Month.HasValue;
-    }
+
+    public bool ShouldSerializeMonth() => Month.HasValue;
+
     public int? Day;
-    public bool ShouldSerializeDay() 
-    {
-        return Day.HasValue;
-    }
+
+    public bool ShouldSerializeDay() => Day.HasValue;
+
     public string Writer;
     public string Penciller;
     public string Inker;
@@ -100,23 +98,19 @@ public class MetadataComicRack
                 field => field.GetCustomAttributes(typeof(DescriptionAttribute), false).SingleOrDefault()
                     is DescriptionAttribute attribute && attribute.Description == value
             );
-            if(field != null)
+            if (field != null)
                 AgeRating = (ComicInfo.AgeRatingType)Enum.Parse(typeof(ComicInfo.AgeRatingType), field.Name);
         }
     }
 
-    [XmlIgnore]
-    public ComicInfo.AgeRatingType AgeRating { get; set; }
+    [XmlIgnore] public ComicInfo.AgeRatingType AgeRating { get; set; }
 
     private float _communityRating;
+
     public float CommunityRating
     {
-        set
-        {
-            if (value is >= 0 and <= 5)
-                _communityRating = MathF.Round(value, 2);
-        }
         get => _communityRating;
+        set => _communityRating = MathF.Round(Math.Clamp(value, 0, 5), 2);
     }
 
     public string MainCharacterOrTeam;
@@ -125,14 +119,19 @@ public class MetadataComicRack
 
     public enum MangaType
     {
-        Unknown, No, Yes, YesAndRightToLeft
+        Unknown,
+        No,
+        Yes,
+        YesAndRightToLeft
     }
-    
+
     public enum YesNoType
     {
-        Unknown, No, Yes
+        Unknown,
+        No,
+        Yes
     }
-    
+
     public class ComicPageInfo
     {
         public int Image;
@@ -159,5 +158,5 @@ public class MetadataComicRack
         Other,
         Deleted
     }
-    #pragma warning restore CS8618
+#pragma warning restore CS8618
 }

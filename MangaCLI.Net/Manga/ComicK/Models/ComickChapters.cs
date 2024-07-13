@@ -1,4 +1,5 @@
 #region header
+
 // MangaCLI.Net : A Featureful Manga Downloader
 // Copyright (C)  2024 canadian
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Text.Json.Serialization;
@@ -22,14 +24,11 @@ namespace MangaCLI.Net.Manga.ComicK.Models;
 
 public class ComickChapters
 {
-    #pragma warning disable CS8618
-    [JsonPropertyName("chapters")]
-    public ComickChapter[] Chapters { get; init; }
-    
-    [JsonPropertyName("total")]
-    public int Total { get; init; }
-    
-    [JsonPropertyName("limit")]
-    public int Limit { get; init; }
-    #pragma warning restore CS8618
+#pragma warning disable CS8618
+    [JsonPropertyName("chapters")] public ComickChapter[] Chapters { get; init; }
+
+    [JsonPropertyName("total")] public int Total { get; init; }
+
+    [JsonPropertyName("limit")] public int Limit { get; init; }
+#pragma warning restore CS8618
 }

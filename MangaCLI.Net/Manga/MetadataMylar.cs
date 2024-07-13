@@ -1,4 +1,5 @@
 #region header
+
 // MangaCLI.Net : A Featureful Manga Downloader
 // Copyright (C)  2024 canadian
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Diagnostics.CodeAnalysis;
@@ -23,50 +25,45 @@ namespace MangaCLI.Net.Manga;
 
 public class MetadataMylar
 {
-    #pragma warning disable CS8618
-    [JsonPropertyName("version")]
-    public string Version = "1.0.2";
-    [JsonPropertyName("metadata")]
-    public MylarMetadata Metadata { get; init; }
-    
+#pragma warning disable CS8618
+    [JsonPropertyName("version")] public string Version = "1.0.2";
+    [JsonPropertyName("metadata")] public MylarMetadata Metadata { get; init; }
+
     public class MylarMetadata
     {
-        [JsonPropertyName("type")]
-        public string Type { get; init; }
-        [JsonPropertyName("publisher")]
-        public string Publisher { get; init; }
-        [JsonPropertyName("imprint")]
-        public string? Imprint { get; init; }
-        [JsonPropertyName("name")]
-        public string Name { get; init; }
-        [JsonPropertyName("comicid")]
-        public int ComicId { get; init; }
-        [JsonPropertyName("year")]
-        public int Year { get; init; }
-        [JsonPropertyName("description_text")]
-        public string? Description { get; init; }
+        [JsonPropertyName("type")] public string Type { get; init; }
+        [JsonPropertyName("publisher")] public string Publisher { get; init; }
+        [JsonPropertyName("imprint")] public string? Imprint { get; init; }
+        [JsonPropertyName("name")] public string Name { get; init; }
+        [JsonPropertyName("comicid")] public int ComicId { get; init; }
+        [JsonPropertyName("year")] public int Year { get; init; }
+        [JsonPropertyName("description_text")] public string? Description { get; init; }
+
         [JsonPropertyName("description_formatted")]
         public string? DescriptionFormatted { get; init; }
-        [JsonPropertyName("volume")]
-        public int? Volume { get; init; }
-        [JsonPropertyName("booktype")]
-        public string BookType { get; init; } // one of Print, OneShot, TPB, or GN
-        [JsonPropertyName("age_rating")]
-        public string? AgeRating { get; init; }
-        [JsonPropertyName("comic_image")]
-        public string CoverImageUrl { get; init; }
-        [JsonPropertyName("total_issues")]
-        public int TotalIssues { get; init; }
-        [JsonPropertyName("publication_run")]
-        public string PublicationRun { get; init; } // in format Month Year - Month Year, if series is ongoing, the end value is `Present`
-        [JsonPropertyName("status")]
-        public string Status { get; init; } // one of `Continuing` or `Ended`
-    }
-    #pragma warning restore CS8618
 
-    public static MetadataMylar FromComicInfo(ComicInfo comicInfo, Func<Uri> alternateCover)
-    {
-        return new MetadataMylar
+        [JsonPropertyName("volume")] public int? Volume { get; init; }
+        
+        /// <summary>
+        /// One of Print, OneShot, TPB, or GN
+        /// </summary>
+        [JsonPropertyName("booktype")] public string BookType { get; init; }
+        [JsonPropertyName("age_rating")] public string? AgeRating { get; init; }
+        [JsonPropertyName("comic_image")] public string CoverImageUrl { get; init; }
+        [JsonPropertyName("total_issues")] public int TotalIssues { get; init; }
+
+        /// <summary>
+        /// In format Month Year - Month Year, if series is ongoing, the end value is `Present`
+        /// </summary>
+        [JsonPropertyName("publication_run")] public string PublicationRun { get; init; }
+
+
+        [JsonPropertyName("status")] public string Status { get; init; }
+    }
+#pragma warning restore CS8618
+
+    public static MetadataMylar FromComicInfo(ComicInfo comicInfo, Func<Uri> alternateCover) =>
+        new()
         {
             Metadata = new MylarMetadata
             {
@@ -74,7 +71,7 @@ public class MetadataMylar
                 AgeRating = comicInfo.AgeRating.GetMylarDescription(typeof(ComicInfo.AgeRatingType)),
                 BookType = "Print",
                 ComicId = comicInfo.Identifier,
-                Year = comicInfo.Year,
+                Year = comicInfo.StartDate.Year,
                 CoverImageUrl = (comicInfo.Covers?.FirstOrDefault().Item2.Location ?? alternateCover()).ToString(),
                 TotalIssues = (int)MathF.Floor(comicInfo.TotalChapters),
                 Description = comicInfo.Description?.ReplaceLineEndings(""),
@@ -82,19 +79,18 @@ public class MetadataMylar
                 Name = comicInfo.Title,
                 Volume = comicInfo.TotalVolumes,
                 Imprint = null,
-                PublicationRun = $"{comicInfo.Year}",
+                PublicationRun = $"{comicInfo.StartDate:MMMM yyyy} - {comicInfo.EndDate?.ToString("MMMM yyyy") ?? "Present"}",
                 Status = comicInfo.Status.GetMylarDescription(typeof(ComicInfo.StatusType)),
-                Publisher = string.Join(", ", comicInfo.Publishers),
+                Publisher = string.Join(", ", comicInfo.Publishers)
             }
         };
-    }
 }
 
 [JsonSerializable(typeof(MetadataMylar))]
 internal partial class MylarJsonContext : JsonSerializerContext;
 
 [AttributeUsage(AttributeTargets.All)]
-sealed class MylarDescriptionAttribute(string description) : Attribute
+internal sealed class MylarDescriptionAttribute(string description) : Attribute
 {
     public string Description => DescriptionValue;
     private string DescriptionValue { get; } = description;

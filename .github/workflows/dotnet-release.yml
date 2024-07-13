@@ -3,7 +3,10 @@
 
 name: .NET Release
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    tags:
+      - "v*.*.*"
     
 jobs:
   build:

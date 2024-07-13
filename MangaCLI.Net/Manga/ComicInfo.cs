@@ -1,4 +1,5 @@
 #region header
+
 // MangaCLI.Net : A Featureful Manga Downloader
 // Copyright (C)  2024 canadian
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.ComponentModel;
@@ -24,7 +26,7 @@ namespace MangaCLI.Net.Manga;
 public class ComicInfo
 {
     public int Identifier;
-    
+
     public string[] Authors = [];
     public string[] Artists = [];
     public string[] Publishers = [];
@@ -37,75 +39,73 @@ public class ComicInfo
     public int TotalVolumes;
     public string? Description;
     public string? DescriptionHtml;
-    public int Year;
-    public int Month;
-    public int Day;
+    public DateOnly StartDate;
+    public DateOnly? EndDate;
+
     public float CommunityRating;
     public AgeRatingType AgeRating;
     public Dictionary<string, string>? AlternateTitles;
     public string[] Genres = [];
     public string[] Tags = [];
     public IEnumerable<(string, ImageType)>? Covers;
-    
+
     public enum AgeRatingType
     {
-        [MylarDescription("All")]
-        [Description("Unknown")]
+        [MylarDescription("All")] [Description("Unknown")]
         Unknown,
-        [MylarDescription("Adult")]
-        [Description("Adults Only 18+")]
+
+        [MylarDescription("Adult")] [Description("Adults Only 18+")]
         AdultsOnly18,
-        [MylarDescription("All")]
-        [Description("Early Childhood")]
+
+        [MylarDescription("All")] [Description("Early Childhood")]
         EarlyChildhood,
-        [MylarDescription("All")]
-        [Description("Everyone")]
+
+        [MylarDescription("All")] [Description("Everyone")]
         Everyone,
-        [MylarDescription("9+")]
-        [Description("Everyone 10+")]
+
+        [MylarDescription("9+")] [Description("Everyone 10+")]
         Everyone10,
-        [MylarDescription("All")]
-        [Description("G")]
+
+        [MylarDescription("All")] [Description("G")]
         G,
-        [MylarDescription("All")]
-        [Description("Kids to Adults")]
+
+        [MylarDescription("All")] [Description("Kids to Adults")]
         KidsToAdults,
-        [MylarDescription("Adult")]
-        [Description("M")]
+
+        [MylarDescription("Adult")] [Description("M")]
         M,
-        [MylarDescription("15+")]
-        [Description("MA15+")]
+
+        [MylarDescription("15+")] [Description("MA15+")]
         MA15,
-        [MylarDescription("17+")]
-        [Description("Mature 17+")]
+
+        [MylarDescription("17+")] [Description("Mature 17+")]
         Mature17,
-        [MylarDescription("12+")]
-        [Description("PG")]
+
+        [MylarDescription("12+")] [Description("PG")]
         PG,
-        [MylarDescription("Adult")]
-        [Description("R18+")]
+
+        [MylarDescription("Adult")] [Description("R18+")]
         R18,
-        [MylarDescription("All")]
-        [Description("Rating Pending")]
+
+        [MylarDescription("All")] [Description("Rating Pending")]
         RatingPending,
-        [MylarDescription("15+")]
-        [Description("Teen")]
+
+        [MylarDescription("15+")] [Description("Teen")]
         Teen,
-        [MylarDescription("Adult")]
-        [Description("X18+")]
+
+        [MylarDescription("Adult")] [Description("X18+")]
         X18
     }
-    
+
     public enum StatusType
     {
-        [MylarDescription("Ended")]
-        [Description("Ended")]
+        [MylarDescription("Ended")] [Description("Ended")]
         Ended,
-        [MylarDescription("Continuing")]
-        [Description("Continuing")]
+
+        [MylarDescription("Continuing")] [Description("Continuing")]
         Continuing,
-        [MylarDescription("Continuing")]
-        [Description("Unknown")]
+
+        [MylarDescription("Continuing")] [Description("Unknown")]
         Unknown
     }
 

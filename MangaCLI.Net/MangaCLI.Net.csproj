@@ -5,10 +5,17 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        
+
         <RuntimeIdentifiers>
             win-x64;win-arm64;linux-x64;linux-arm64
         </RuntimeIdentifiers>
+
+        <PublishTrimmed>true</PublishTrimmed>
+        <PublishSingleFile>true</PublishSingleFile>
+        <TrimMode>full</TrimMode>
+        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+        <SelfContained>True</SelfContained>
+        <Optimize>true</Optimize>
         
         <Title>MangaCLI.Net</Title>
         <Authors>CanadianBaconBoi</Authors>
@@ -21,22 +28,20 @@
         <PackageReleaseNotes>Initial Release</PackageReleaseNotes>
     </PropertyGroup>
 
-    <PropertyGroup Condition="'$(CompileConfig)' == 'RELEASE'" >
-        <PublishTrimmed>true</PublishTrimmed>
-        <PublishSingleFile>true</PublishSingleFile>
-        <TrimMode>full</TrimMode>
-        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-        <SelfContained>True</SelfContained>
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <PublishTrimmed>false</PublishTrimmed>
+        <TrimMode>partial</TrimMode>
+        <Optimize>false</Optimize>
     </PropertyGroup>
-    
+
     <ItemGroup>
-        <PackageReference Include="AniListNet" Version="1.7.0" />
-        <PackageReference Include="CommandLineParser" Version="2.9.1" />
-        <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17" />
-        <PackageReference Include="PDFsharp" Version="6.1.1" />
-        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
-        <TrimmerRootDescriptor Include="PreventTrim.xml" />
+        <PackageReference Include="AniListNet" Version="1.7.0"/>
+        <PackageReference Include="CommandLineParser" Version="2.9.1"/>
+        <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17"/>
+        <PackageReference Include="PDFsharp" Version="6.1.1"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4"/>
+        <TrimmerRootDescriptor Include="PreventTrim.xml"/>
     </ItemGroup>
-    
-    
+
+
 </Project>
