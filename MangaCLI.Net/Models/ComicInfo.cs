@@ -3,7 +3,7 @@
 // MangaCLI.Net : A Featureful Manga Downloader
 // Copyright (C)  2024 canadian
 // 
-// This program is free software: you can redistribute it and/or modify
+// This program is free software: you can redistribute it and/or moNewDirectory1dify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
@@ -19,8 +19,9 @@
 #endregion
 
 using System.ComponentModel;
+using MangaCLI.Net.Metadata;
 
-namespace MangaCLI.Net.Manga;
+namespace MangaCLI.Net.Models;
 
 // ReSharper disable InconsistentNaming
 public class ComicInfo

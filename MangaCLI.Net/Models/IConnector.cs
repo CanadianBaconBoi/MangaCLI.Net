@@ -18,7 +18,7 @@
 
 #endregion
 
-namespace MangaCLI.Net.Manga;
+namespace MangaCLI.Net.Models;
 
 public interface IConnector
 {

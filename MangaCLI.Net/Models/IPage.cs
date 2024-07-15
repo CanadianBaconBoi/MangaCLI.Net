@@ -18,16 +18,11 @@
 
 #endregion
 
-namespace MangaCLI.Net.Manga;
+namespace MangaCLI.Net.Models;
 
-public interface IChapter
+public interface IPage
 {
-    public string? Title { get; set; }
-    public string Identifier { get; init; }
-    public string? ChapterIndex { get; init; }
-    public string? VolumeIndex { get; set; }
-    public string[]? GroupName { get; set; }
-
-    public IPage[] Pages { get; }
-    public MetadataComicRack GetComicRackMetadata();
+    public Uri Url { get; init; }
+    public int Width { get; init; }
+    public int Height { get; init; }
 }

@@ -21,7 +21,7 @@
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
-namespace MangaCLI.Net.Manga.ComicK.Models;
+namespace MangaCLI.Net.Connectors.Manga.ComicK.Models;
 
 public class ComickComicInfo
 {

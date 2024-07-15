@@ -24,25 +24,23 @@ using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using AniListNet;
 using CommandLine;
-using MangaCLI.Net.Manga;
-using MangaCLI.Net.Manga.ComicK;
+using MangaCLI.Net.Connectors.Manga.ComicK;
+using MangaCLI.Net.Metadata;
+using MangaCLI.Net.Models;
 using MimeTypes;
 using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
+using MylarJsonContext = MangaCLI.Net.Metadata.MylarJsonContext;
 
 namespace MangaCLI.Net;
 
 internal static class MangaCli
 {
     public static IConnector Connector = null!;
-
-    public static AniClient AnilistClient = new();
-
 
     private static readonly Dictionary<string, Func<IConnector>> Connectors = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -56,7 +54,7 @@ internal static class MangaCli
 
         Connector = Connectors[options.Source]();
         
-        foreach (var comicName in options.SearchQuery!)
+        foreach (var comicName in options.SearchQuery)
         {
             var result = DownloadComic(options.Clone(), comicName);
             switch (result.Result)
@@ -110,10 +108,10 @@ internal static class MangaCli
         if (!Directory.Exists(options.OutputFolder))
             Directory.CreateDirectory(options.OutputFolder);
 
-        if (options.SearchQuery!.Any()) return options;
+        if (options.SearchQuery.Any()) return options;
 
         List<string> queries = [];
-        using var fs = File.OpenRead(ResolvePath(options.SearchQueryFile!));
+        using var fs = File.OpenRead(ResolvePath(options.SearchQueryFile));
         using var streamReader = new StreamReader(fs, Encoding.UTF8, true, 128);
         while (streamReader.ReadLine() is { } line)
             queries.Add(line);

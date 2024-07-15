@@ -21,9 +21,10 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using MangaCLI.Net.Manga.ComicK.Models;
+using MangaCLI.Net.Connectors.Manga.ComicK.Models;
+using MangaCLI.Net.Models;
 
-namespace MangaCLI.Net.Manga.ComicK;
+namespace MangaCLI.Net.Connectors.Manga.ComicK;
 
 public class ComickConnector : IConnector
 {

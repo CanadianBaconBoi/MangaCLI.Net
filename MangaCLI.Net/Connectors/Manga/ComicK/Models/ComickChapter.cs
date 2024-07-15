@@ -21,8 +21,10 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using AniListNet.Objects;
+using MangaCLI.Net.Metadata;
+using MangaCLI.Net.Models;
 
-namespace MangaCLI.Net.Manga.ComicK.Models;
+namespace MangaCLI.Net.Connectors.Manga.ComicK.Models;
 
 public class ComickChapter : IChapter
 {

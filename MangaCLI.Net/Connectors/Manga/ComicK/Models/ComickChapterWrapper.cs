@@ -20,15 +20,16 @@
 
 using System.Text.Json.Serialization;
 
-namespace MangaCLI.Net.Manga.ComicK.Models;
+namespace MangaCLI.Net.Connectors.Manga.ComicK.Models;
 
-public class ComickChapters
+public class ComickChapterWrapper
 {
 #pragma warning disable CS8618
-    [JsonPropertyName("chapters")] public ComickChapter[] Chapters { get; init; }
+    [JsonPropertyName("chapter")] public ComickFatChapter Chapter { get; init; }
 
-    [JsonPropertyName("total")] public int Total { get; init; }
-
-    [JsonPropertyName("limit")] public int Limit { get; init; }
+    public class ComickFatChapter
+    {
+        [JsonPropertyName("images")] public ComickPage[] Pages { get; init; }
+    }
 #pragma warning restore CS8618
 }

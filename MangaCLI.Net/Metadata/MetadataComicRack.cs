@@ -21,8 +21,9 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Xml.Serialization;
+using MangaCLI.Net.Models;
 
-namespace MangaCLI.Net.Manga;
+namespace MangaCLI.Net.Metadata;
 
 // ReSharper disable InconsistentNaming
 public class MetadataComicRack

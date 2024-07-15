@@ -18,26 +18,18 @@
 
 #endregion
 
-using AniListNet;
-using AniListNet.Objects;
+using MangaCLI.Net.Metadata;
 
-namespace MangaCLI.Net.Manga;
+namespace MangaCLI.Net.Models;
 
-public interface IComic
+public interface IChapter
 {
-    public string Title { get; init; }
+    public string? Title { get; set; }
     public string Identifier { get; init; }
-    public string Slug { get; init; }
-    public string? Description { get; init; }
-    public string? CoverThumbnail { get; init; }
-    public string? CoverUrl { get; init; }
-    public Media? AnilistInfo { get; }
-    public AniPagination<StaffEdge>? AnilistStaff { get; }
-    public AniPagination<CharacterEdge>? AnilistCharacters { get; }
-    public AniPagination<MediaReview>? AnilistReviews { get; }
+    public string? ChapterIndex { get; init; }
+    public string? VolumeIndex { get; set; }
+    public string[]? GroupName { get; set; }
 
-
-    public IEnumerable<IChapter> GetChapters(string language);
-
-    public ComicInfo ComicInfo { get; }
+    public IPage[] Pages { get; }
+    public MetadataComicRack GetComicRackMetadata();
 }

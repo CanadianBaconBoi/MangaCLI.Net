@@ -18,11 +18,17 @@
 
 #endregion
 
-namespace MangaCLI.Net.Manga;
+using System.Text.Json.Serialization;
 
-public interface IPage
+namespace MangaCLI.Net.Connectors.Manga.ComicK.Models;
+
+public class ComickChapters
 {
-    public Uri Url { get; init; }
-    public int Width { get; init; }
-    public int Height { get; init; }
+#pragma warning disable CS8618
+    [JsonPropertyName("chapters")] public ComickChapter[] Chapters { get; init; }
+
+    [JsonPropertyName("total")] public int Total { get; init; }
+
+    [JsonPropertyName("limit")] public int Limit { get; init; }
+#pragma warning restore CS8618
 }

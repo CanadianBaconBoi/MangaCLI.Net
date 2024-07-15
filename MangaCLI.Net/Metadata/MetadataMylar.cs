@@ -20,8 +20,9 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
+using MangaCLI.Net.Models;
 
-namespace MangaCLI.Net.Manga;
+namespace MangaCLI.Net.Metadata;
 
 public class MetadataMylar
 {

@@ -22,27 +22,27 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using AniListNet;
 using AniListNet.Objects;
+using MangaCLI.Net.Connectors.Metadata;
+using MangaCLI.Net.Models;
 using Image = SixLabors.ImageSharp.Image;
 
-namespace MangaCLI.Net.Manga.ComicK.Models;
+namespace MangaCLI.Net.Connectors.Manga.ComicK.Models;
 
-public class ComickComic : IComic
+public class ComickComic : AnilistMetadataProvider, IComic
 {
 #pragma warning disable CS8618
+
     [JsonPropertyName("title")] public string Title { get; init; }
-
     [JsonPropertyName("hid")] public string Identifier { get; init; }
-
     [JsonPropertyName("slug")] public string Slug { get; init; }
-
     [JsonPropertyName("desc")] public string? Description { get; init; }
-
     [JsonPropertyName("cover_url")] public string? CoverThumbnail { get; init; }
-
     [JsonIgnore] public string? CoverUrl { get; init; }
+    [JsonIgnore] public override string AnilistId => RawComicInfo.Comic.Links.FirstOrDefault(link => link.Key == "al").Value ?? "0";
 #pragma warning restore CS8618
 
-    [JsonIgnore] private ComickComicInfo? _comicInfoRaw;
+    [JsonIgnore]
+    private ComickComicInfo? _comicInfoRaw;
 
     [JsonIgnore]
     private ComickComicInfo RawComicInfo =>
@@ -158,45 +158,9 @@ public class ComickComic : IComic
             Location = anilistInfo.Cover.ExtraLargeImageUrl
         });
     }
-
-    private Media? _anilistInfo;
-
-    [JsonIgnore]
-    public Media AnilistInfo
-    {
-        get
-        {
-            try
-            {
-                return _anilistInfo ??= MangaCli.AnilistClient.GetMediaAsync(
-                    int.Parse(RawComicInfo.Comic.Links.FirstOrDefault(link => link.Key == "al").Value ?? "0")
-                ).GetAwaiter().GetResult();
-            }
-            catch
-            {
-                return _anilistInfo = new Media();
-            }
-        }
-    }
-
-    private AniPagination<StaffEdge>? _anilistStaff;
-
-    public AniPagination<StaffEdge>? AnilistStaff =>
-        _anilistStaff ??= AnilistInfo?.GetStaffAsync().GetAwaiter().GetResult();
-
-    private AniPagination<CharacterEdge>? _anilistCharacters;
-
-    public AniPagination<CharacterEdge>? AnilistCharacters =>
-        _anilistCharacters ??= AnilistInfo?.GetCharactersAsync().GetAwaiter().GetResult();
-
-    private AniPagination<MediaReview>? _anilistReviews;
-
-    public AniPagination<MediaReview>? AnilistReviews =>
-        _anilistReviews ??= AnilistInfo?.GetReviewsAsync().GetAwaiter().GetResult();
-
-
+    
     IEnumerable<IChapter> IComic.GetChapters(string language) => GetChapters(language);
-
+    
     public IEnumerable<ComickChapter> GetChapters(string language)
     {
         var chaptersUrl =

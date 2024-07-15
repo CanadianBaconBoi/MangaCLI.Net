@@ -18,17 +18,27 @@
 
 #endregion
 
-using System.Text.Json.Serialization;
+using AniListNet;
+using AniListNet.Objects;
 
-namespace MangaCLI.Net.Manga.ComicK.Models;
+namespace MangaCLI.Net.Models;
 
-public class ComickPage : IPage
+public interface IComic
 {
-#pragma warning disable CS8618
-    [JsonPropertyName("url")] public Uri Url { get; init; }
+    public string Title { get; init; }
+    public string Identifier { get; init; }
+    public string Slug { get; init; }
+    public string? Description { get; init; }
+    public string? CoverThumbnail { get; init; }
+    public string? CoverUrl { get; init; }
+    public string AnilistId { get; }
+    public Media? AnilistInfo { get; }
+    public AniPagination<StaffEdge>? AnilistStaff { get; }
+    public AniPagination<CharacterEdge>? AnilistCharacters { get; }
+    public AniPagination<MediaReview>? AnilistReviews { get; }
 
-    [JsonPropertyName("w")] public int Width { get; init; }
 
-    [JsonPropertyName("h")] public int Height { get; init; }
-#pragma warning restore CS8618
+    public IEnumerable<IChapter> GetChapters(string language);
+
+    public ComicInfo ComicInfo { get; }
 }
