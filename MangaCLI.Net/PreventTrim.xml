@@ -3,4 +3,6 @@
         <namespace fullname="PdfSharp.Pdf"/>
         <namespace fullname="PdfSharp.Pdf.Advanced"/>
     </assembly>
+    
+    <assembly fullname="AniListNet" />
 </linker>

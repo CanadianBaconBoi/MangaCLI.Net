@@ -123,7 +123,7 @@ public class ComickChapter : IChapter
                 .Select(character => character.Character.Name.FullName)
                                           ?? []),
             MainCharacterOrTeam = Owner.AnilistCharacters?.Data //TODO: Find a metadata provider with per-chapter metadata
-                .First(character => character.Role == CharacterRole.Main).Character.Name.FullName
+                .FirstOrDefault(character => character.Role == CharacterRole.Main)?.Character.Name.FullName
                                   ?? string.Empty,
             Teams = "", //TODO: Find a metadata provider with per-chapter metadata
             Locations = "", //TODO: Find a metadata provider with per-chapter metadata
@@ -144,12 +144,12 @@ public class ComickChapter : IChapter
                     ? MetadataComicRack.YesNoType.Yes
                     : MetadataComicRack.YesNoType.No,
             Manga = MetadataComicRack.MangaType.YesAndRightToLeft,
-            ScanInformation = $"Translated by: {GroupName?.First() ?? "UNKNOWN"}",
+            ScanInformation = $"Translated by: {GroupName?.FirstOrDefault() ?? "UNKNOWN"}",
             AgeRating = Owner.ComicInfo.AgeRating,
             CommunityRating = UpvoteCount + DownvoteCount != 0
                 ? MathF.Round(UpvoteCount / ((float)UpvoteCount + DownvoteCount) * 5f, 2)
                 : 0f,
-            Review = Owner.AnilistReviews?.Data.First().Summary ?? "", //TODO: Find a metadata provider with per-chapter metadata
+            Review = Owner.AnilistReviews?.Data.FirstOrDefault()?.Summary ?? "", //TODO: Find a metadata provider with per-chapter metadata
             Pages = pages
         };
     }

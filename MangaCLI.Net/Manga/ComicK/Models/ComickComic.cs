@@ -162,7 +162,7 @@ public class ComickComic : IComic
     private Media? _anilistInfo;
 
     [JsonIgnore]
-    public Media? AnilistInfo
+    public Media AnilistInfo
     {
         get
         {
@@ -174,7 +174,7 @@ public class ComickComic : IComic
             }
             catch
             {
-                return null;
+                return _anilistInfo = new Media();
             }
         }
     }

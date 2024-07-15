@@ -2,8 +2,15 @@
 *A Featureful Manga Downloader*
 
 ### Command Line Options
+
+---
+#### One of
 - -q, --query
     - **Required.** Search query to use when finding manga
+- -Q, --query-file
+  - **Required** File with line seperated search queries to use when finding manga
+---
+
 - -m, --manga
     - (Default: First) Which manga to select from search (First/Random/Exact)
 - -S, --source

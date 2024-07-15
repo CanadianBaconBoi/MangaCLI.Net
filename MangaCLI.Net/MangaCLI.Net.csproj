@@ -29,9 +29,7 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-        <PublishTrimmed>false</PublishTrimmed>
-        <TrimMode>partial</TrimMode>
-        <Optimize>false</Optimize>
+        <SelfContained>False</SelfContained>
     </PropertyGroup>
 
     <ItemGroup>

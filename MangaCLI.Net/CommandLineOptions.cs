@@ -27,8 +27,15 @@ internal class CommandLineOptions
 #pragma warning disable CS8618
     [Option('q', "query",
         Required = true,
+        Group = "query",
         HelpText = "Search query to use when finding manga")]
-    public string SearchQuery { get; set; }
+    public IEnumerable<string> SearchQuery { get; set; }
+    
+    [Option('Q', "query-file",
+        Required = true,
+        Group = "query",
+        HelpText = "File with line seperated search queries to use when finding manga")]
+    public string SearchQueryFile { get; set; }
 
     [Option('m', "manga",
         Default = SearchSelectionType.First,
@@ -75,6 +82,19 @@ internal class CommandLineOptions
         HelpText = "Disallow the use of alternate scanlation groups for chapter search for missing chapters")]
     public bool DisallowAlternateGroups { get; set; }
 #pragma warning restore CS8618
+    public CommandLineOptions Clone() => new()
+    {
+        SearchQuery = SearchQuery,
+        SearchSelection = SearchSelection,
+        Source = Source,
+        ScanlationGroup = ScanlationGroup,
+        OutputFolder = OutputFolder,
+        Format = Format,
+        Language = Language,
+        NoSubfolder = NoSubfolder,
+        Overwrite = Overwrite,
+        DisallowAlternateGroups = DisallowAlternateGroups
+    };
 }
 
 public enum SearchSelectionType

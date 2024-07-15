@@ -22,6 +22,7 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using AniListNet;
 using CommandLine;
@@ -50,37 +51,92 @@ internal static class MangaCli
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandLineOptions))]
     public static void Main(string[] args)
-    {        
+    {
         var options = ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
 
         Connector = Connectors[options.Source]();
-
-        var comic = FindComic(options.SearchQuery, options.SearchSelection);
-        if (comic == null)
+        
+        foreach (var comicName in options.SearchQuery!)
         {
-            Console.Error.WriteLine($"No comic found for \"{options.SearchQuery}\"");
-            Environment.Exit(1);
-            return;
+            var result = DownloadComic(options.Clone(), comicName);
+            switch (result.Result)
+            {
+                case DownloadResult.NotFound:
+                    Console.Error.WriteLine($"No comic found for \"{comicName}\"");
+                    break;
+                case DownloadResult.NoChapters:
+                    Console.Error.WriteLine($"No chapters found for comic \"{result.Comic!.Title}\" ({result.Comic.ComicInfo.Title})");
+                    break;
+                case DownloadResult.NoGoodChapters:
+                    Console.Error.WriteLine($"No chapters found for comic \"{result.Comic!.Title}\" ({result.Comic.ComicInfo.Title}) with Scanlation Group {options.ScanlationGroup}");
+                    Console.Error.WriteLine($"Try a different Scanlation Group or enable Alternate Groups with --allow-alternate");
+                    break;
+            }
         }
+    }
+
+    private static CommandLineOptions ValidateCommandLine(ParserResult<CommandLineOptions> optionsResult)
+    {
+        foreach (var error in optionsResult.Errors)
+        {
+            switch (error.Tag)
+            {
+                case ErrorType.UnknownOptionError:
+                case ErrorType.RepeatedOptionError:
+                case ErrorType.MissingRequiredOptionError:
+                    Console.Error.WriteLine("Error parsing command line arguments");
+                    break;
+                default:
+                    Console.Error.WriteLine("Unknown error parsing command line arguments");
+                    break;
+            }
+
+            Environment.Exit(1);
+            return null;
+        }
+
+        var options = optionsResult.Value;
+
+        // The string sanitizer isn't great on CommandLineParser, but it's a small library so we tolerate it
+        if (!Connectors.ContainsKey(options.Source))
+        {
+            Console.Error.WriteLine($"Source \"{options.Source}\" does not exist");
+            Environment.Exit(1);
+            return null;
+        }
+
+        options.OutputFolder = ResolvePath(options.OutputFolder);
+
+        if (!Directory.Exists(options.OutputFolder))
+            Directory.CreateDirectory(options.OutputFolder);
+
+        if (options.SearchQuery!.Any()) return options;
+
+        List<string> queries = [];
+        using var fs = File.OpenRead(ResolvePath(options.SearchQueryFile!));
+        using var streamReader = new StreamReader(fs, Encoding.UTF8, true, 128);
+        while (streamReader.ReadLine() is { } line)
+            queries.Add(line);
+        options.SearchQuery = queries.AsEnumerable();
+
+        return options;
+    }
+
+    private static (IComic? Comic, DownloadResult Result) DownloadComic(CommandLineOptions options, string comicName)
+    {
+        var comic = FindComic(comicName, options.SearchSelection);
+        if (comic == null)
+            return (null, DownloadResult.NotFound);
 
         Console.WriteLine($"Found Comic: \"{comic.Title}\" ({comic.ComicInfo.Title})");
 
         var chapters = comic.GetChapters(options.Language).GetEnumerator();
         if (!chapters.MoveNext())
-        {
-            Console.Error.WriteLine($"No chapters found for comic \"{comic.Title}\" ({comic.ComicInfo.Title})");
-            Environment.Exit(1);
-            return;
-        }
+            return (comic, DownloadResult.NoChapters);
 
         var filteredChapters= FilterChapters(chapters, options.ScanlationGroup, !options.DisallowAlternateGroups);
         if (filteredChapters.Count == 0)
-        {
-            Console.Error.WriteLine($"No chapters found for comic \"{comic.Title}\" ({comic.ComicInfo.Title}) with Scanlation Group {options.ScanlationGroup}");
-            Console.Error.WriteLine($"Try a different Scanlation Group or enable Alternate Groups with --allow-alternate");
-            Environment.Exit(1);
-            return;
-        }
+            return (comic, DownloadResult.NoGoodChapters);
 
         if (!options.NoSubfolder)
         {
@@ -143,47 +199,7 @@ internal static class MangaCli
         }
 
         Console.WriteLine($"\nDownloaded Manga: \"{comic.Title}\" ({comic.ComicInfo.Title}) [{filteredChapters.Count - failedChapterCount}/{filteredChapters.Count} Chapters]");
-    }
-
-    private static CommandLineOptions ValidateCommandLine(ParserResult<CommandLineOptions> optionsResult)
-    {
-        foreach (var error in optionsResult.Errors)
-        {
-            switch (error.Tag)
-            {
-                case ErrorType.UnknownOptionError:
-                case ErrorType.RepeatedOptionError:
-                case ErrorType.MissingRequiredOptionError:
-                    break;
-                default:
-                    Console.Error.WriteLine("Unknown error parsing command line arguments");
-                    break;
-            }
-
-            Environment.Exit(1);
-            return null;
-        }
-
-        var options = optionsResult.Value;
-
-        // The string sanitizer isn't great on CommandLineParser, but it's a small library so we tolerate it
-        if (!Connectors.ContainsKey(options.Source))
-        {
-            Console.Error.WriteLine($"Source \"{options.Source}\" does not exist");
-            Environment.Exit(1);
-            return null;
-        }
-
-        options.OutputFolder = options.OutputFolder
-            .Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))
-            .Replace("//", Path.DirectorySeparatorChar.ToString());
-        if ('\\' != Path.DirectorySeparatorChar)
-            options.OutputFolder = options.OutputFolder.Replace("\\", Path.DirectorySeparatorChar.ToString());
-
-        if (!Directory.Exists(options.OutputFolder))
-            Directory.CreateDirectory(options.OutputFolder);
-
-        return options;
+        return (comic, DownloadResult.Successful);
     }
 
     private static IComic? FindComic(string searchQuery, SearchSelectionType searchType)
@@ -223,7 +239,7 @@ internal static class MangaCli
                 if (string.IsNullOrEmpty(chapterWeHave.VolumeIndex))
                     chapterWeHave.VolumeIndex = chapter.VolumeIndex;
             }
-            else if (!useAlternateGroup || chapter.GroupName?.Contains(preferredGroup, strCmp) is true)
+            else if (useAlternateGroup || chapter.GroupName?.Contains(preferredGroup, strCmp) is true)
                 chaptersToTake[chapter.ChapterIndex ?? "0"] = chapter;
         } while (chapters.MoveNext());
 
@@ -402,6 +418,11 @@ internal static class MangaCli
 
         return hasInvalid ? new string(buffer) : path;
     }
+
+    private static string ResolvePath(string path) =>
+        path.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))
+            .Replace("//", Path.DirectorySeparatorChar.ToString())
+            .Replace("\\", Path.DirectorySeparatorChar.ToString());
 }
 
 internal static class UriExtensions
