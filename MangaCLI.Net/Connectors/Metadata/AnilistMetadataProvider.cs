@@ -23,17 +23,17 @@ namespace MangaCLI.Net.Connectors.Metadata;
 
 public abstract class AnilistMetadataProvider
 {
-    public static readonly AniClient AnilistClient = new();
+    private static readonly AniClient AnilistClient = new();
     
     public abstract string AnilistId { get; }
     
     private Media? _anilistInfo;
-    private static readonly Media EmptyMedia = new Media();
+    private bool _infoAvailable = true;
     public Media? AnilistInfo
     {
         get
         {
-            if (_anilistInfo == EmptyMedia)
+            if (!_infoAvailable)
                 return null;
             try
             {
@@ -43,24 +43,72 @@ public abstract class AnilistMetadataProvider
             }
             catch
             {
-                _anilistInfo = EmptyMedia;
+                _infoAvailable = false;
                 return null;
             }
         }
     }
 
     private AniPagination<StaffEdge>? _anilistStaff;
+    private bool _staffAvailable = true;
 
-    public AniPagination<StaffEdge>? AnilistStaff =>
-        _anilistStaff ??= AnilistInfo?.GetStaffAsync().GetAwaiter().GetResult();
+    public AniPagination<StaffEdge>? AnilistStaff
+    {
+        get
+        {
+            if(!_staffAvailable)
+                return null;
+            try
+            {
+                return _anilistStaff ??= AnilistInfo?.GetStaffAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                _staffAvailable = false;
+                return null;
+            }
+        }
+    }
 
     private AniPagination<CharacterEdge>? _anilistCharacters;
+    private bool _charactersAvailable = true;
 
-    public AniPagination<CharacterEdge>? AnilistCharacters =>
-        _anilistCharacters ??= AnilistInfo?.GetCharactersAsync().GetAwaiter().GetResult();
+    public AniPagination<CharacterEdge>? AnilistCharacters
+    {
+        get
+        {
+            if(!_charactersAvailable)
+                return null;
+            try
+            {
+                return _anilistCharacters ??= AnilistInfo?.GetCharactersAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                _charactersAvailable = false;
+                return null;
+            }
+        }
+    }
 
     private AniPagination<MediaReview>? _anilistReviews;
+    private bool _reviewsAvailable = true;
 
-    public AniPagination<MediaReview>? AnilistReviews =>
-        _anilistReviews ??= AnilistInfo?.GetReviewsAsync().GetAwaiter().GetResult();
+    public AniPagination<MediaReview>? AnilistReviews
+    {
+        get
+        {
+            if(!_reviewsAvailable)
+                return null;
+            try
+            {
+                return _anilistReviews ??= AnilistInfo?.GetReviewsAsync().GetAwaiter().GetResult();
+            }
+            catch
+            {
+                _reviewsAvailable = false;
+                return null;
+            }
+        }
+    }
 }
