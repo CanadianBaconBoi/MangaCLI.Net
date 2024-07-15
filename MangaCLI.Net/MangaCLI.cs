@@ -50,9 +50,7 @@ internal static class MangaCli
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandLineOptions))]
     public static void Main(string[] args)
-    {
-        args = ["-q Overlord", "-m First"];
-        
+    {        
         var options = ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
 
         Connector = Connectors[options.Source]();
