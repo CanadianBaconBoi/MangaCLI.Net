@@ -19,7 +19,6 @@
 #endregion
 
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Xml.Serialization;
 using MangaCLI.Net.Models;
 
@@ -29,10 +28,6 @@ namespace MangaCLI.Net.Metadata;
 public class MetadataComicRack
 {
 #pragma warning disable CS8618
-    [UnconditionalSuppressMessage("Trimming",
-        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "All members are referenced")]
-    public static readonly XmlSerializer Serializer = new(typeof(MetadataComicRack));
 
     public string Title;
     public string Series;
@@ -158,6 +153,14 @@ public class MetadataComicRack
         BackCover,
         Other,
         Deleted
+    }
+    
+    [XmlIgnore]
+    private static readonly XmlSerializer Serializer = new System.Xml.Serialization.XmlSerializer(typeof(MetadataComicRack));
+    
+    public static void Serialize(MetadataComicRack metadata, in Stream stream)
+    {
+        Serializer.Serialize(stream, metadata);
     }
 #pragma warning restore CS8618
 }

@@ -23,5 +23,5 @@ public enum DownloadResult
     Successful = 0,
     NotFound = 1,
     NoChapters = 2,
-    NoGoodChapters = 3
+    NoGoodChapters = 3,
 }

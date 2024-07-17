@@ -26,6 +26,7 @@ using MangaCLI.Net.Models;
 
 namespace MangaCLI.Net.Connectors.Manga.ComicK;
 
+[ConnectorDescriptor("comick")]
 public class ComickConnector : IConnector
 {
     internal static readonly Uri BaseApiUrl = new("https://api.comick.fun");
@@ -41,15 +42,17 @@ public class ComickConnector : IConnector
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "MangaCLI.Net Downloader");
     }
 
+    public static IConnector GetInstance() => new ComickConnector();
+
     public HttpClient GetClient() => _httpClient;
 
-    IEnumerable<IComic> IConnector.SearchComics(string searchQuery) => SearchComics(searchQuery);
+    IAsyncEnumerable<IComic?> IConnector.SearchComics(string searchQuery) => SearchComics(searchQuery);
 
-    private IEnumerable<ComickComic> SearchComics(string searchQuery) =>
-        _httpClient.GetFromJsonAsync(
+    private IAsyncEnumerable<ComickComic?> SearchComics(string searchQuery) =>
+        _httpClient.GetFromJsonAsAsyncEnumerable(
             BaseApiUrl.Combine($"/v1.0/search/?type=comic&page=1&limit=50&tachiyomi=true&sort=view&showall=false&q={searchQuery}"),
-            ComickJsonContext.Default.ComickComicArray
-        ).GetAwaiter().GetResult() ?? [];
+            ComickJsonContext.Default.ComickComic
+        );
 }
 
 [JsonSerializable(typeof(ComickPage))]

@@ -5,4 +5,8 @@
     </assembly>
     
     <assembly fullname="AniListNet" />
+
+    <assembly fullname="MangaCLI.Net">
+        <type fullname="MangaCLI.Net.Connectors*" />
+    </assembly>
 </linker>

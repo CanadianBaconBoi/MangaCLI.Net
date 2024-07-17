@@ -36,7 +36,7 @@ public class MetadataMylar
         [JsonPropertyName("publisher")] public string Publisher { get; init; }
         [JsonPropertyName("imprint")] public string? Imprint { get; init; }
         [JsonPropertyName("name")] public string Name { get; init; }
-        [JsonPropertyName("comicid")] public int ComicId { get; init; }
+        [JsonPropertyName("comicid")] public long ComicId { get; init; }
         [JsonPropertyName("year")] public int Year { get; init; }
         [JsonPropertyName("description_text")] public string? Description { get; init; }
 
@@ -69,20 +69,21 @@ public class MetadataMylar
             Metadata = new MylarMetadata
             {
                 Type = "comicSeries",
-                AgeRating = comicInfo.AgeRating.GetMylarDescription(typeof(ComicInfo.AgeRatingType)),
+                AgeRating = comicInfo.AgeRating?.GetMylarDescription(typeof(ComicInfo.AgeRatingType)),
                 BookType = "Print",
                 ComicId = comicInfo.Identifier,
-                Year = comicInfo.StartDate.Year,
+                Year = comicInfo.StartDate?.Year ?? DateTime.Now.Year,
                 CoverImageUrl = (comicInfo.Covers?.FirstOrDefault().Item2.Location ?? alternateCover()).ToString(),
-                TotalIssues = (int)MathF.Floor(comicInfo.TotalChapters),
+                TotalIssues = (int)MathF.Floor(comicInfo.TotalChapters ?? 0),
                 Description = comicInfo.Description?.ReplaceLineEndings(""),
                 DescriptionFormatted = comicInfo.Description,
-                Name = comicInfo.Title,
+                Name = comicInfo.Title ?? string.Empty,
                 Volume = comicInfo.TotalVolumes,
                 Imprint = null,
                 PublicationRun = $"{comicInfo.StartDate:MMMM yyyy} - {comicInfo.EndDate?.ToString("MMMM yyyy") ?? "Present"}",
-                Status = comicInfo.Status.GetMylarDescription(typeof(ComicInfo.StatusType)),
-                Publisher = string.Join(", ", comicInfo.Publishers)
+                Status = comicInfo.Status?.GetMylarDescription(typeof(ComicInfo.StatusType))
+                         ?? ComicInfo.StatusType.Unknown.GetMylarDescription(typeof(ComicInfo.StatusType)),
+                Publisher = string.Join(", ", comicInfo.Publishers ?? [])
             }
         };
 }

@@ -26,31 +26,33 @@ namespace MangaCLI.Net.Connectors.Manga.ComicK.Models;
 public class ComickComicInfo
 {
 #pragma warning disable CS8618
+    
     [JsonPropertyName("comic")] public ComicInfo Comic { get; init; }
 
-    [JsonPropertyName("artists")] public Artist[] Artists { get; init; }
+    [JsonPropertyName("artists")] public Artist[]? Artists { get; init; }
 
-    [JsonPropertyName("authors")] public Author[] Authors { get; init; }
+    [JsonPropertyName("authors")] public Author[]? Authors { get; init; }
 
     public class ComicInfo
     {
-        [JsonPropertyName("title")] public string Title { get; init; }
-        [JsonPropertyName("country")] public string Country { get; init; }
-        [JsonPropertyName("status")] public int Status { get; init; }
-        [JsonPropertyName("links")] public Dictionary<string, string> Links { get; init; }
+        [JsonPropertyName("id")] public int Identifier { get; init; }
+        [JsonPropertyName("title")] public string? Title { get; init; }
+        [JsonPropertyName("country")] public string? Country { get; init; }
+        [JsonPropertyName("status")] public int? Status { get; init; }
+        [JsonPropertyName("links")] public Dictionary<string, string>? Links { get; init; }
         [JsonPropertyName("last_chapter")] public float? TotalChapters { get; init; }
         [JsonPropertyName("final_volume")] public string? FinalVolume { get; init; }
         [JsonPropertyName("desc")] public string? Description { get; init; }
         [JsonPropertyName("parsed")] public string? ParsedDecsription { get; init; }
         [JsonPropertyName("year")] public int? Year { get; init; }
-        [JsonPropertyName("bayesian_rating")] public string Rating { get; init; }
-        [JsonPropertyName("content_rating")] public ComickContentRating ContentRating { get; init; }
-        [JsonPropertyName("md_titles")] public List<ComickTitle> Titles { get; init; }
+        [JsonPropertyName("bayesian_rating")] public string? Rating { get; init; }
+        [JsonPropertyName("content_rating")] public ComickContentRating? ContentRating { get; init; }
+        [JsonPropertyName("md_titles")] public List<ComickTitle>? Titles { get; init; }
 
         [JsonPropertyName("md_comic_md_genres")]
-        public List<ComickGenreWrapper> Genres { get; init; }
+        public List<ComickGenreWrapper>? Genres { get; init; }
 
-        [JsonPropertyName("md_covers")] public List<ComickCover> Covers { get; init; }
+        [JsonPropertyName("md_covers")] public List<ComickCover>? Covers { get; init; }
         [JsonPropertyName("mu_comics")] public ComickComics? ExtraComicInfo { get; init; }
 
         [JsonConverter(typeof(JsonStringEnumConverter<ComickContentRating>))]
@@ -90,10 +92,10 @@ public class ComickComicInfo
         public class ComickComics
         {
             [JsonPropertyName("mu_comic_publishers")]
-            public List<PublisherWrapper> Publishers { get; init; }
+            public List<PublisherWrapper>? Publishers { get; init; }
 
             [JsonPropertyName("mu_comic_categories")]
-            public List<ComicCategoryWrapper> ComicCategories { get; init; }
+            public List<ComicCategoryWrapper>? ComicCategories { get; init; }
 
             public class PublisherWrapper
             {

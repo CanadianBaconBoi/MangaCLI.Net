@@ -16,7 +16,27 @@
         <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
         <SelfContained>True</SelfContained>
         <Optimize>true</Optimize>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
         
+        <Title>MangaCLI.Net</Title>
+        <Authors>CanadianBaconBoi</Authors>
+        <Description>A Featureful Manga Downloader</Description>
+        <Copyright>(c) 2024 CanadianBaconBoi</Copyright>
+        <PackageProjectUrl>https://github.com/CanadianBaconBoi/MangaCLI.Net</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/CanadianBaconBoi/MangaCLI.Net/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/CanadianBaconBoi/MangaCLI.Net.git</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+        <PackageReleaseNotes>Initial Release</PackageReleaseNotes>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <SelfContained>False</SelfContained>
+        <DebugType>full</DebugType>
+    </PropertyGroup>
+    
+    <PropertyGroup>
         <Title>MangaCLI.Net</Title>
         <Authors>CanadianBaconBoi</Authors>
         <Description>A Featureful Manga Downloader</Description>
@@ -28,16 +48,17 @@
         <PackageReleaseNotes>Initial Release</PackageReleaseNotes>
     </PropertyGroup>
 
-    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-        <SelfContained>False</SelfContained>
-    </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="AniListNet" Version="1.7.0"/>
         <PackageReference Include="CommandLineParser" Version="2.9.1"/>
         <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17"/>
         <PackageReference Include="PDFsharp" Version="6.1.1"/>
-        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4"/>
+        <PackageReference Include="SkiaSharp" Version="3.0.0-preview.3.1" />
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.3.1" />
+        <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+        <PackageReference Include="Tomlyn" Version="0.17.0" />
+        
         <TrimmerRootDescriptor Include="PreventTrim.xml"/>
     </ItemGroup>
 

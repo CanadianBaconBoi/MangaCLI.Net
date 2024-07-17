@@ -18,27 +18,41 @@
 
 #endregion
 
-using AniListNet;
-using AniListNet.Objects;
+using MangaCLI.Net.Connectors.Manga.ComicK.Models;
+using MangaCLI.Net.Connectors.Metadata;
 
 namespace MangaCLI.Net.Models;
 
 public interface IComic
 {
+    private static Dictionary<(Type, string), ComicInfo> _comicInfoCache = new();
+    
     public string Title { get; init; }
     public string Identifier { get; init; }
     public string Slug { get; init; }
     public string? Description { get; init; }
     public string? CoverThumbnail { get; init; }
     public string? CoverUrl { get; init; }
-    public string AnilistId { get; }
-    public Media? AnilistInfo { get; }
-    public AniPagination<StaffEdge>? AnilistStaff { get; }
-    public AniPagination<CharacterEdge>? AnilistCharacters { get; }
-    public AniPagination<MediaReview>? AnilistReviews { get; }
-
-
-    public IEnumerable<IChapter> GetChapters(string language);
-
-    public ComicInfo ComicInfo { get; }
+    public IAsyncEnumerable<ComickChapter> GetChapters(string language);
+    public Dictionary<string, string>? MetadataIdentifiers { get; }
+    protected ComicInfo RawComicInfo { get; }
+    
+    public async Task<ComicInfo> GetComicInfo()
+    {
+        if (_comicInfoCache.ContainsKey((GetType(), Identifier)))
+            return _comicInfoCache[(GetType(), Identifier)];
+        
+        var comicInfos = new List<(string Provider, ComicInfo Info)> {("connector", RawComicInfo)};
+        if (MetadataIdentifiers == null) return _comicInfoCache[(GetType(), Identifier)] = ComicInfo.Merge(comicInfos, MangaCli.Config);
+        foreach (var (providerName, identifier) in MetadataIdentifiers)
+        {
+            if (!IMetadataProvider.MetadataProviders.ContainsKey(providerName)) continue;
+            var provider = IMetadataProvider.MetadataProviders[providerName];
+            var comicInfo = await provider.Delegate.Invoke(identifier).GetComicInfo();
+            if (comicInfo == null) continue;
+            comicInfos.Add((providerName, comicInfo));
+        }
+        
+        return _comicInfoCache[(GetType(), Identifier)] = ComicInfo.Merge(comicInfos, MangaCli.Config);
+    }
 }

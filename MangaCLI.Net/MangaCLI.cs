@@ -25,15 +25,14 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using CommandLine;
-using MangaCLI.Net.Connectors.Manga.ComicK;
+using MangaCLI.Net.Connectors.Manga;
 using MangaCLI.Net.Metadata;
 using MangaCLI.Net.Models;
 using MimeTypes;
 using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
+using SkiaSharp;
 using MylarJsonContext = MangaCLI.Net.Metadata.MylarJsonContext;
 
 namespace MangaCLI.Net;
@@ -42,38 +41,44 @@ internal static class MangaCli
 {
     public static IConnector Connector = null!;
 
-    private static readonly Dictionary<string, Func<IConnector>> Connectors = new(StringComparer.OrdinalIgnoreCase)
+    public static readonly Config Config = Config.FromFile(Environment.OSVersion.Platform switch
     {
-        { "ComicK", () => new ComickConnector() }
-    };
+        PlatformID.Unix => ResolvePath(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config/mangacli.toml")),
+        PlatformID.Win32NT => ResolvePath(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MangaCLI/mangacli.toml")),
+        _ => throw new ArgumentOutOfRangeException(
+            $"Operating system {Environment.OSVersion.VersionString} is not supported")
+    }).Result;
+    
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandLineOptions))]
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        var options = ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
-
-        Connector = Connectors[options.Source]();
+        var options = await ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
+        Connector = IConnector.Connectors[options.Source].Invoke();
         
         foreach (var comicName in options.SearchQuery)
         {
-            var result = DownloadComic(options.Clone(), comicName);
+            var result = await DownloadComic(options.Clone(), comicName);
+            var comicInfo = await result.Comic!.GetComicInfo();
             switch (result.Result)
             {
                 case DownloadResult.NotFound:
-                    Console.Error.WriteLine($"No comic found for \"{comicName}\"");
+                    await Console.Error.WriteLineAsync($"No comic found for \"{comicName}\"");
                     break;
                 case DownloadResult.NoChapters:
-                    Console.Error.WriteLine($"No chapters found for comic \"{result.Comic!.Title}\" ({result.Comic.ComicInfo.Title})");
+                    await Console.Error.WriteLineAsync($"No chapters found for comic \"{result.Comic!.Title}\" ({comicInfo.Title})");
                     break;
                 case DownloadResult.NoGoodChapters:
-                    Console.Error.WriteLine($"No chapters found for comic \"{result.Comic!.Title}\" ({result.Comic.ComicInfo.Title}) with Scanlation Group {options.ScanlationGroup}");
-                    Console.Error.WriteLine($"Try a different Scanlation Group or enable Alternate Groups with --allow-alternate");
+                    await Console.Error.WriteLineAsync($"No chapters found for comic \"{result.Comic!.Title}\" ({comicInfo.Title}) with Scanlation Group {options.ScanlationGroup}");
+                    await Console.Error.WriteLineAsync($"Try a different Scanlation Group or enable Alternate Groups with --allow-alternate");
                     break;
             }
         }
     }
 
-    private static CommandLineOptions ValidateCommandLine(ParserResult<CommandLineOptions> optionsResult)
+    private static async Task<CommandLineOptions> ValidateCommandLine(ParserResult<CommandLineOptions> optionsResult)
     {
         foreach (var error in optionsResult.Errors)
         {
@@ -82,10 +87,10 @@ internal static class MangaCli
                 case ErrorType.UnknownOptionError:
                 case ErrorType.RepeatedOptionError:
                 case ErrorType.MissingRequiredOptionError:
-                    Console.Error.WriteLine("Error parsing command line arguments");
+                    await Console.Error.WriteLineAsync("Error parsing command line arguments");
                     break;
                 default:
-                    Console.Error.WriteLine("Unknown error parsing command line arguments");
+                    await Console.Error.WriteLineAsync("Unknown error parsing command line arguments");
                     break;
             }
 
@@ -96,9 +101,9 @@ internal static class MangaCli
         var options = optionsResult.Value;
 
         // The string sanitizer isn't great on CommandLineParser, but it's a small library so we tolerate it
-        if (!Connectors.ContainsKey(options.Source))
+        if (!IConnector.Connectors.ContainsKey(options.Source))
         {
-            Console.Error.WriteLine($"Source \"{options.Source}\" does not exist");
+            await Console.Error.WriteLineAsync($"Source \"{options.Source}\" does not exist");
             Environment.Exit(1);
             return null;
         }
@@ -111,50 +116,55 @@ internal static class MangaCli
         if (options.SearchQuery.Any()) return options;
 
         List<string> queries = [];
-        using var fs = File.OpenRead(ResolvePath(options.SearchQueryFile));
+        await using var fs = File.OpenRead(ResolvePath(options.SearchQueryFile));
         using var streamReader = new StreamReader(fs, Encoding.UTF8, true, 128);
-        while (streamReader.ReadLine() is { } line)
+        while (await streamReader.ReadLineAsync() is { } line)
             queries.Add(line);
         options.SearchQuery = queries.AsEnumerable();
 
         return options;
     }
 
-    private static (IComic? Comic, DownloadResult Result) DownloadComic(CommandLineOptions options, string comicName)
+    private static async Task<(IComic? Comic, DownloadResult Result)> DownloadComic(CommandLineOptions options, string comicName)
     {
-        var comic = FindComic(comicName, options.SearchSelection);
+        var comic = await FindComic(comicName, options.SearchSelection);
         if (comic == null)
             return (null, DownloadResult.NotFound);
 
-        Console.WriteLine($"Found Comic: \"{comic.Title}\" ({comic.ComicInfo.Title})");
+        var comicInfo = await comic.GetComicInfo();
 
-        var chapters = comic.GetChapters(options.Language).GetEnumerator();
-        if (!chapters.MoveNext())
+        await Console.Out.WriteLineAsync($"Found Comic: \"{comic.Title}\" ({comicInfo.Title})");
+
+        var chapters = comic.GetChapters(options.Language).GetAsyncEnumerator();
+        if (!await chapters.MoveNextAsync())
             return (comic, DownloadResult.NoChapters);
 
-        var filteredChapters= FilterChapters(chapters, options.ScanlationGroup, !options.DisallowAlternateGroups);
+        var filteredChapters= await FilterChapters(chapters, options.ScanlationGroup, !options.DisallowAlternateGroups);
         if (filteredChapters.Count == 0)
             return (comic, DownloadResult.NoGoodChapters);
 
+        if (string.IsNullOrEmpty(comicInfo.Title))
+            comicInfo.Title = comic.Title;
+        
         if (!options.NoSubfolder)
         {
-            options.OutputFolder = Path.Combine(options.OutputFolder, NormalizePath(comic.ComicInfo.Title));
+            options.OutputFolder = Path.Combine(options.OutputFolder, NormalizePath(comicInfo.Title!));
             Directory.CreateDirectory(options.OutputFolder);
         }
 
 
         var mylarSeriesPath = Path.Combine(options.OutputFolder, "series.json");
         if (options.Overwrite || !File.Exists(mylarSeriesPath))
-            using (var fs = new FileStream(mylarSeriesPath, FileMode.Create))
-                JsonSerializer.Serialize(fs,
-                    MetadataMylar.FromComicInfo(comic.ComicInfo,
+            await using (var fs = new FileStream(mylarSeriesPath, FileMode.Create))
+                await JsonSerializer.SerializeAsync(fs,
+                    MetadataMylar.FromComicInfo(comicInfo,
                         () => filteredChapters.First().Value.Pages.First().Url),
                     MylarJsonContext.Default.MetadataMylar);
 
 
-        if (comic.ComicInfo.Covers?.FirstOrDefault() is { } cover)
+        if (comicInfo.Covers?.FirstOrDefault() is { } cover)
         {
-            var response = Connector.GetClient().GetAsync(cover.Item2.Location).GetAwaiter().GetResult();
+            var response = await Connector.GetClient().GetAsync(cover.Item2.Location);
             if (response.StatusCode != HttpStatusCode.OK)
                 throw new Exception("Incorrect Status Code");
             if (response.Content.Headers.ContentType?.MediaType == "image/webp")
@@ -162,17 +172,17 @@ internal static class MangaCli
                 var coverPath = Path.Combine(options.OutputFolder, "cover.png");
                 if (options.Overwrite || !File.Exists(coverPath))
                 {
-                    using var image = Image.Load(response.Content.ReadAsStream());
-                    using var fs = new FileStream(coverPath, FileMode.CreateNew);
-                    image.Save(fs, PngFormat.Instance);
+                    using var image = SKImage.FromEncodedData(await response.Content.ReadAsStreamAsync()).Encode(SKEncodedImageFormat.Png, 100);
+                    await using var fs = new FileStream(coverPath, FileMode.CreateNew);
+                    await fs.WriteAsync(image.ToArray());
                 }
             }
             else
             {
                 var coverPath = Path.Combine(options.OutputFolder, $"cover{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
                 if (options.Overwrite || !File.Exists(coverPath))
-                    using (var fs = new FileStream(coverPath, FileMode.Create))
-                        response.Content.CopyTo(fs, null, CancellationToken.None);
+                    await using (var fs = new FileStream(coverPath, FileMode.Create))
+                        await response.Content.CopyToAsync(fs);
             }
         }
 
@@ -183,7 +193,7 @@ internal static class MangaCli
             if (chapter.GroupName == null || chapter.GroupName.Length == 0)
                 chapter.GroupName = ["UNKNOWN"];
 
-            if (!DownloadChapter(chapter, Path.Combine(
+            if (!await DownloadChapter(comicInfo, chapter, Path.Combine(
                     options.OutputFolder,
                     NormalizePath($"[{fileIndex++:0000}]_Chapter_{chapterIndex}_[{chapter.GroupName.First()}].{
                         options.Format switch {
@@ -196,11 +206,13 @@ internal static class MangaCli
                 failedChapterCount++;
         }
 
-        Console.WriteLine($"\nDownloaded Manga: \"{comic.Title}\" ({comic.ComicInfo.Title}) [{filteredChapters.Count - failedChapterCount}/{filteredChapters.Count} Chapters]");
+        await Console.Out.WriteLineAsync($"\nDownloaded Manga: \"{comic.Title}\" ({comicInfo.Title}) [{filteredChapters.Count - failedChapterCount}/{filteredChapters.Count} Chapters]");
+
+        await Task.Delay(1000);
         return (comic, DownloadResult.Successful);
     }
 
-    private static IComic? FindComic(string searchQuery, SearchSelectionType searchType)
+    private static async Task<IComic?> FindComic(string searchQuery, SearchSelectionType searchType)
     {
         var comics = Connector.SearchComics(searchQuery);
         if (searchQuery == searchQuery.ToLower())
@@ -208,16 +220,16 @@ internal static class MangaCli
 
         return searchType switch
         {
-            SearchSelectionType.Exact => comics.FirstOrDefault(c => c.Title.Equals(searchQuery)),
-            SearchSelectionType.First => comics.FirstOrDefault(),
-            SearchSelectionType.Random => comics.ToArray() is { Length: > 0 } comicArray
+            SearchSelectionType.Exact => await comics.FirstOrDefaultAsync(c => c != null && c.Title.Equals(searchQuery)),
+            SearchSelectionType.First => await comics.FirstOrDefaultAsync(),
+            SearchSelectionType.Random => await comics.ToArrayAsync() is { Length: > 0 } comicArray
                 ? comicArray[Random.Shared.Next(0, comicArray.Length)]
                 : null,
             _ => null
         };
     }
 
-    private static Dictionary<string, IChapter> FilterChapters(IEnumerator<IChapter> chapters, string preferredGroup,
+    private static async Task<Dictionary<string, IChapter>> FilterChapters(IAsyncEnumerator<IChapter> chapters, string preferredGroup,
         bool useAlternateGroup)
     {
         var strCmp = StringComparer.InvariantCultureIgnoreCase;
@@ -239,26 +251,23 @@ internal static class MangaCli
             }
             else if (useAlternateGroup || chapter.GroupName?.Contains(preferredGroup, strCmp) is true)
                 chaptersToTake[chapter.ChapterIndex ?? "0"] = chapter;
-        } while (chapters.MoveNext());
+        } while (await chapters.MoveNextAsync());
 
         foreach (var chapter in chaptersToTake.Values.Where(chapter => string.IsNullOrEmpty(chapter.Title)))
             chapter.Title = $"Chapter {chapter.ChapterIndex ?? "0"}";
 
         return chaptersToTake;
     }
-
-    [UnconditionalSuppressMessage("Trimming",
-        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "All members are referenced")]
-    private static bool DownloadChapter(IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
+    
+    private static async Task<bool> DownloadChapter(ComicInfo comicInfo, IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
     {
         if (!overwrite && File.Exists(outputFilePath))
             return true;
 
-        var comickRackMetadata = chapter.GetComicRackMetadata();
+        var comickRackMetadata = chapter.GetComicRackMetadata(comicInfo);
 
-        Console.Write("\r" + new string(' ', Console.BufferWidth) + "\r");
-        Console.Write($"Downloading Chapter {chapter.ChapterIndex} : {chapter.Title}");
+        await Console.Out.WriteAsync("\r" + new string(' ', Console.BufferWidth) + "\r");
+        await Console.Out.WriteAsync($"Downloading Chapter {chapter.ChapterIndex} : {chapter.Title}");
 
         var tempDownloadDirectory = GetTempDirectory();
 
@@ -269,63 +278,67 @@ internal static class MangaCli
         {
             try
             {
-                Parallel.ForAsync(0, pages.Length, new ParallelOptions()
+                await Parallel.ForAsync(0, pages.Length, new ParallelOptions
                     {
                         MaxDegreeOfParallelism = 2,
                         CancellationToken = cts.Token
                     },
                     async (i, token) =>
                     {
-                        var page = pages[i];
-                        var failCount = 0;
-                        while (true)
-                            try
+                    var page = pages[i];
+                    var failCount = 0;
+                    while (true)
+                        try
+                        {
+                            using var response = await Connector.GetClient().GetAsync(page.Url, token);
+                            if (response.StatusCode != HttpStatusCode.OK)
+                                throw new Exception("Incorrect Status Code");
+                            comickRackMetadata.Pages[i].ImageSize =
+                                response.Content.Headers.ContentLength.GetValueOrDefault(0);
+                            if (response.Content.Headers.ContentType?.MediaType == "image/webp")
                             {
-                                using var response = await Connector.GetClient().GetAsync(page.Url, token);
-                                if (response.StatusCode != HttpStatusCode.OK)
-                                    throw new Exception("Incorrect Status Code");
-                                comickRackMetadata.Pages[i].ImageSize =
-                                    response.Content.Headers.ContentLength.GetValueOrDefault(0);
-                                if (response.Content.Headers.ContentType?.MediaType == "image/webp")
-                                {
-                                    var path = Path.Combine(tempDownloadDirectory, $"{i + 1:000000}.png");
-                                    using var image = await Image.LoadAsync(await response.Content.ReadAsStreamAsync(token), token);
-                                    await using var fs = new FileStream(path, FileMode.CreateNew);
-                                    await image.SaveAsync(fs, PngFormat.Instance, token);
-                                }
-                                else
-                                {
-                                    var path = Path.Combine(tempDownloadDirectory, $"{i + 1:000000}{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
-                                    pageMap[path] = page;
-                                    await using var fs = new FileStream(path, FileMode.CreateNew);
-                                    await response.Content.CopyToAsync(fs, token);
-                                }
+                                var path = Path.Combine(tempDownloadDirectory, $"{i + 1:000000}.png");
+                                using SKData image = SKImage.FromEncodedData(await response.Content.ReadAsStreamAsync(token)).Encode(SKEncodedImageFormat.Png, 100);
+                                await using var fs = new FileStream(path, FileMode.Create);
+                                fs.Write(image.AsSpan());
+                            }
+                            else
+                            {
+                                var path = Path.Combine(tempDownloadDirectory,
+                                    $"{i + 1:000000}{MimeTypeMap.GetExtension(response.Content.Headers.ContentType?.MediaType ?? "image/jpeg")}");
+                                pageMap[path] = page;
+                                await using var fs = new FileStream(path, FileMode.CreateNew);
+                                await response.Content.CopyToAsync(fs, token);
+                            }
 
+                            break;
+                        }
+                        catch
+                        {
+                            failCount++;
+                            if (failCount == 1)
+                                await Console.Out.WriteLineAsync();
+                            if (failCount == 3)
+                            {
+                                await Console.Error.WriteLineAsync(
+                                    $"Failed to request page {i + 1} three times, chapter {chapter.ChapterIndex} will be missing.");
+                                // ReSharper disable once AccessToDisposedClosure
+                                await cts.CancelAsync();
                                 break;
                             }
-                            catch
+
+                            var sleep = failCount switch
                             {
-                                failCount++;
-                                if (failCount == 1)
-                                    Console.WriteLine();
-                                if (failCount == 3)
-                                {
-                                    await Console.Error.WriteLineAsync($"Failed to request page {i + 1} three times, chapter {chapter.ChapterIndex} will be missing.");
-                                    // ReSharper disable once AccessToDisposedClosure
-                                    await cts.CancelAsync();
-                                    break;
-                                }
-                                
-                                var sleep = failCount switch
-                                {
-                                    1 => 1,
-                                    2 => 10,
-                                    _ => throw new Exception("Impossibro")
-                                };
-                                await Console.Error.WriteLineAsync($"Failed to request page {i + 1}, retrying in {sleep} seconds.");
-                                await Task.Delay(sleep * 1000, token);
-                            }
-                    }).GetAwaiter().GetResult();
+                                1 => 1,
+                                2 => 10,
+                                _ => throw new Exception("Impossibro")
+                            };
+                            await Console.Error.WriteLineAsync(
+                                $"Failed to request page {i + 1}, retrying in {sleep} seconds.");
+                            await Task.Delay(sleep * 1000, token);
+
+                        }
+                    });
             }
             // ReSharper disable once EmptyGeneralCatchClause
             catch { }
@@ -337,9 +350,9 @@ internal static class MangaCli
         switch (outputFormat)
         {
             case OutputFormat.CBZ:
-                using (var mdFs = new FileStream(Path.Combine(tempDownloadDirectory, "ComicInfo.xml"), FileMode.CreateNew))
-                    MetadataComicRack.Serializer.Serialize(mdFs, comickRackMetadata);
-                using (var fs = new FileStream(outputFilePath, FileMode.Create))
+                await using (var mdFs = new FileStream(Path.Combine(tempDownloadDirectory, "ComicInfo.xml"), FileMode.CreateNew))
+                    MetadataComicRack.Serialize(comickRackMetadata, mdFs);
+                await using (var fs = new FileStream(outputFilePath, FileMode.Create))
                     ZipFile.CreateFromDirectory(tempDownloadDirectory, fs);
                 break;
             case OutputFormat.PDF:
@@ -369,17 +382,15 @@ internal static class MangaCli
                     }
                     catch
                     {
-                        using var imageStream = new MemoryStream();
-                        using var imageFile = Image.Load(Path.Combine(tempDownloadDirectory, file));
-                        imageFile.SaveAsBmp(imageStream);
-                        img = XImage.FromStream(imageStream);
+                        using var imageFile = SKImage.FromEncodedData(Path.Combine(tempDownloadDirectory, file));
+                        img = XImage.FromStream(imageFile.Encode(SKEncodedImageFormat.Png, 100).AsStream(true));
                     }
 
                     gfx.DrawImage(img, new XRect(new XPoint(0, 0), new XVector(pageMap[file].Width, pageMap[file].Height)));
                     img.Dispose();
                 }
 
-                using (var fs = new FileStream(outputFilePath, FileMode.Create))
+                await using (var fs = new FileStream(outputFilePath, FileMode.Create))
                     document.Save(fs);
 
                 break;
@@ -418,9 +429,9 @@ internal static class MangaCli
     }
 
     private static string ResolvePath(string path) =>
-        path.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))
+        Path.GetFullPath(path.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))
             .Replace("//", Path.DirectorySeparatorChar.ToString())
-            .Replace("\\", Path.DirectorySeparatorChar.ToString());
+            .Replace("\\", Path.DirectorySeparatorChar.ToString()));
 }
 
 internal static class UriExtensions
@@ -447,8 +458,8 @@ internal static class EnumDescriptionExtension
             .GetField(enumerationValue.ToString())
             ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
             .FirstOrDefault() is DescriptionAttribute attribute
-                ? attribute.Description
-                : enumerationValue.ToString();
+            ? attribute.Description
+            : enumerationValue.ToString();
     }
 
     public static string GetMylarDescription<T>(this T enumerationValue,
@@ -462,7 +473,13 @@ internal static class EnumDescriptionExtension
             .GetField(enumerationValue.ToString())
             ?.GetCustomAttributes(typeof(MylarDescriptionAttribute), false)
             .FirstOrDefault() is MylarDescriptionAttribute attribute
-                ? attribute.Description
-                : enumerationValue.ToString();
+            ? attribute.Description
+            : enumerationValue.ToString();
     }
+}
+
+public static class EnumerableExtensions
+{
+    public static IEnumerable<T> NullToEmpty<T>(this IEnumerable<T>? src) => src ?? [];
+    public static T[]? EmptyToNull<T>(this T[] src) => src.Length == 0 ? null : src;
 }
