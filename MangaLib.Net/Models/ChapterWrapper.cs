@@ -59,6 +59,6 @@ public class ChapterWrapper (IChapter chapter): IChapter
 
     public IPage[] Pages => _chapter.Pages;
 
-    public MetadataComicRack GetComicRackMetadata(Base.Models.ComicInfo comicInfo) =>
+    public MetadataComicRack GetComicRackMetadata(ComicInfo comicInfo) =>
         _chapter.GetComicRackMetadata(comicInfo);
 }

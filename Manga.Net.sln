@@ -10,11 +10,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MangaCLI.Net", "MangaCLI.Ne
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MangaLib.Net.Base", "MangaLib.Net.Base\MangaLib.Net.Base.csproj", "{EB683425-A75A-463E-94C9-48A7DAB5416B}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Manga.Net.Providers", "Manga.Net.Providers", "{2DE192C5-53E3-491E-9FA4-C6C07F658746}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MangaLib.Net.Plugins", "MangaLib.Net.Plugins", "{2DE192C5-53E3-491E-9FA4-C6C07F658746}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Providers", "Providers\Providers.csproj", "{C74C06FD-0F05-493D-82FF-E15932987372}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProvidersPlugin", "MangaLib.Net.Plugins\ProvidersPlugin\ProvidersPlugin.csproj", "{C74C06FD-0F05-493D-82FF-E15932987372}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Connectors", "Connectors\Connectors.csproj", "{3F850D07-7D3A-4B6A-98A0-148773FAAB10}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConnectorsPlugin", "MangaLib.Net.Plugins\ConnectorsPlugin\ConnectorsPlugin.csproj", "{3F850D07-7D3A-4B6A-98A0-148773FAAB10}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

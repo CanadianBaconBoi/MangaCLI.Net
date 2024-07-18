@@ -4,27 +4,33 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <DebugSymbols>false</DebugSymbols>
-        <DebugType>None</DebugType>
+        <DebugType>none</DebugType>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <RootNamespace>Connectors</RootNamespace>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-        <DebugSymbols>false</DebugSymbols>
+        <DebugSymbols>true</DebugSymbols>
         <DebugType>Full</DebugType>
     </PropertyGroup>
 
     <PropertyGroup>
-        <Title>MangaLib.Net.Base</Title>
-        <Version>1.4.0</Version>
+        <Title>Manga.Net Default Connectors</Title>
         <Authors>CanadianBaconBoi</Authors>
-        <Description>A Featureful Manga Library's Plugin Base</Description>
+        <Description>Featureful Manga Connectors</Description>
         <Copyright>(c) 2024 CanadianBaconBoi</Copyright>
-        <PackageProjectUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/MangaLib.Net.Base/</PackageProjectUrl>
+        <PackageProjectUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/Connectors/</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/CanadianBaconBoi/Manga.Net.git</RepositoryUrl>
         <RepositoryType>Git</RepositoryType>
-        <PackageId>MangaLib.Net.Base</PackageId>
-        <Company>CanadianKoruko</Company>
-        <PackageTags>manga</PackageTags>
-        <PackageReleaseNotes>Plugin base for MangaLib/MangaCLI.Net</PackageReleaseNotes>
+        <Version>1.0.0</Version>
     </PropertyGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="..\..\MangaLib.Net.Base\MangaLib.Net.Base.csproj">
+            <Private>false</Private>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </ProjectReference>
+    </ItemGroup>
+
 </Project>

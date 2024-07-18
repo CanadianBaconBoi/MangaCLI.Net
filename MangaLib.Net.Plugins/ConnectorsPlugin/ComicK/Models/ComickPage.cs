@@ -19,17 +19,17 @@
 #endregion
 
 using System.Text.Json.Serialization;
+using MangaLib.Net.Base.Models;
 
-namespace MangaLib.Net.Connectors.Manga.ComicK.Models;
+namespace Connectors.ComicK.Models;
 
-public class ComickChapterWrapper
+public class ComickPage : IPage
 {
 #pragma warning disable CS8618
-    [JsonPropertyName("chapter")] public ComickFatChapter Chapter { get; init; }
+    [JsonPropertyName("url")] public Uri Url { get; init; }
 
-    public class ComickFatChapter
-    {
-        [JsonPropertyName("images")] public ComickPage[] Pages { get; init; }
-    }
+    [JsonPropertyName("w")] public int Width { get; init; }
+
+    [JsonPropertyName("h")] public int Height { get; init; }
 #pragma warning restore CS8618
 }

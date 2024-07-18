@@ -78,7 +78,7 @@ public class ConnectorWrapper(IConnector connector)
         }
     }
     
-    public IAsyncEnumerable<IComic?> SearchComics(string searchQuery) => connector.SearchComics(searchQuery);
+    public IAsyncEnumerable<IComic?> SearchComics(string searchQuery) => _connector.SearchComics(searchQuery);
 
     private delegate IConnector ConnectorInstanceDelegate();
 }

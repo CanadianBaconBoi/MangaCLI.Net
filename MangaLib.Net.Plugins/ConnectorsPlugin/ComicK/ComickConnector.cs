@@ -24,7 +24,6 @@ using Connectors.ComicK.Models;
 using MangaLib.Net.Base.Connectors.Manga;
 using MangaLib.Net.Base.Helpers;
 using MangaLib.Net.Base.Models;
-using MangaLib.Net.Connectors.Manga.ComicK.Models;
 
 namespace Connectors.ComicK;
 

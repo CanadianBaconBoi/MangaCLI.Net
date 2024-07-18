@@ -18,8 +18,6 @@
 
 #endregion
 
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using MangaLib.Net.Base.Models;
 
 namespace MangaLib.Net.Base.Connectors.Manga;

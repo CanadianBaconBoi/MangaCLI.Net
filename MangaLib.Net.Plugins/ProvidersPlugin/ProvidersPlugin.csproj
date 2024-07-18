@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <DebugSymbols>false</DebugSymbols>
+        <DebugType>none</DebugType>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <RootNamespace>Providers</RootNamespace>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>Full</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Title>Manga.Net Default Providers</Title>
+        <Authors>CanadianBaconBoi</Authors>
+        <Description>Featureful Metadata Providers</Description>
+        <Copyright>(c) 2024 CanadianBaconBoi</Copyright>
+        <PackageProjectUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/Providers/</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/CanadianBaconBoi/Manga.Net.git</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+        <Version>1.0.0</Version>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\MangaLib.Net.Base\MangaLib.Net.Base.csproj">
+            <Private>false</Private>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </ProjectReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AniListNet" Version="1.7.0">
+        <Private>false</Private>
+        <ExcludeAssets>runtime</ExcludeAssets>
+      </PackageReference>
+      <PackageReference Include="SkiaSharp" Version="2.88.8" >
+          <Private>false</Private>
+          <ExcludeAssets>runtime</ExcludeAssets>
+      </PackageReference>
+      <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.8" >
+          <Private>false</Private>
+          <ExcludeAssets>runtime</ExcludeAssets>
+      </PackageReference>
+    </ItemGroup>
+</Project>

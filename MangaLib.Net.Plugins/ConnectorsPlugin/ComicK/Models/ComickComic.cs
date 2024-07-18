@@ -22,7 +22,6 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using MangaLib.Net.Base.Helpers;
 using MangaLib.Net.Base.Models;
-using MangaLib.Net.Connectors.Manga.ComicK.Models;
 
 namespace Connectors.ComicK.Models;
 

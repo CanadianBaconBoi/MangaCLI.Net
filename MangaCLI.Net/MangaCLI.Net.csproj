@@ -8,15 +8,18 @@
         <RuntimeIdentifiers>
             win-x64;win-arm64;linux-x64;linux-arm64
         </RuntimeIdentifiers>
-
+        
         <PublishSingleFile>true</PublishSingleFile>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <DebugType>none</DebugType>
+        <Optimize>true</Optimize>
+        <DebugSymbols>false</DebugSymbols>
+        <DebugType>None</DebugType>
+        <SelfContained>false</SelfContained>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-        <DebugType>full</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>Full</DebugType>
     </PropertyGroup>
     
     <PropertyGroup>
@@ -24,9 +27,10 @@
         <Authors>CanadianBaconBoi</Authors>
         <Description>A Featureful Manga Downloader</Description>
         <Copyright>(c) 2024 CanadianBaconBoi</Copyright>
-        <PackageProjectUrl>https://github.com/CanadianBaconBoi/MangaCLI.Net</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/CanadianBaconBoi/MangaCLI.Net/blob/master/LICENSE</PackageLicenseUrl>
-        <RepositoryUrl>https://github.com/CanadianBaconBoi/MangaCLI.Net.git</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/MangaCLI.Net</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/CanadianBaconBoi/Manga.Net.git</RepositoryUrl>
+        <Version>1.4.0</Version>
         <RepositoryType>Git</RepositoryType>
     </PropertyGroup>
 
@@ -34,15 +38,16 @@
         <PackageReference Include="CommandLineParser" Version="2.9.1"/>
         <PackageReference Include="MimeTypeMapOfficial" Version="1.0.17"/>
         <PackageReference Include="PDFsharp" Version="6.1.1"/>
-        <PackageReference Include="SkiaSharp" Version="3.0.0-preview.4.1" />
-        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.4.1" />
         <PackageReference Include="System.Linq.Async" Version="6.0.1" />
         <PackageReference Include="Tomlyn" Version="0.17.0" />
+        <PackageReference Include="SkiaSharp" Version="2.88.8"/>
+        <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.8"/>
     </ItemGroup>
 
 
     <ItemGroup>
-      <ProjectReference Include="..\MangaLib.Net.Base\MangaLib.Net.Base.csproj" />
-      <ProjectReference Include="..\MangaLib.Net\MangaLib.Net.csproj" />
+        <ProjectReference Include="..\MangaLib.Net\MangaLib.Net.csproj" />
+        <ProjectReference Include="..\MangaLib.Net.Plugins\ConnectorsPlugin\ConnectorsPlugin.csproj" />
+        <ProjectReference Include="..\MangaLib.Net.Plugins\ProvidersPlugin\ProvidersPlugin.csproj" />
     </ItemGroup>
 </Project>

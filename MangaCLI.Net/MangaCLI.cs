@@ -25,8 +25,8 @@ using System.Net;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Text;
-using AniListNet.Objects;
 using CommandLine;
+using Connectors.ComicK;
 using MangaLib.Net.Base.Connectors.Manga;
 using MangaLib.Net.Base.Connectors.Metadata;
 using MangaLib.Net.Base.Metadata;
@@ -38,6 +38,7 @@ using MimeTypes;
 using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
+using Providers;
 using SkiaSharp;
 
 namespace MangaCLI.Net;
@@ -55,9 +56,15 @@ internal static class MangaCli
             $"Operating system {Environment.OSVersion.VersionString} is not supported")
     };
     
-    private static ConnectorWrapper _connector = null!;
+    private static ConnectorWrapper? _connector;
     private static Config Config { set; get; } = null!;
-    private static readonly AssemblyLoadContext PluginLoadContext = new("Plugins", true);
+    private static readonly List<PluginLoadContext> PluginContexts = new();
+
+    private static readonly Dictionary<string, Assembly> PackagedPlugins = new()
+    {
+        { "DefaultConnectors", typeof(ComickConnector).Assembly },
+        { "DefaultProviders", typeof(AnilistMetadataProvider).Assembly }
+    };
     
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandLineOptions))]
     public static async Task Main(string[] args)
@@ -68,50 +75,53 @@ internal static class MangaCli
         var pluginsDirectory = Path.Combine(ConfigFolderPath, "plugins/");
         if (Directory.Exists(pluginsDirectory))
         {
-            foreach (var assemblyPath in Directory.EnumerateFiles(pluginsDirectory, "*", SearchOption.AllDirectories))
+            foreach (var pluginDirectory in Directory.EnumerateDirectories(pluginsDirectory, "*", SearchOption.TopDirectoryOnly))
             {
-                if(!assemblyPath.EndsWith(".plugin.dll")) continue;
-                try
+                foreach (var file in Directory.EnumerateFiles(pluginDirectory, "*", SearchOption.TopDirectoryOnly))
                 {
-                    var assembly = PluginLoadContext.LoadFromAssemblyPath(Path.GetFullPath(assemblyPath));
-                    foreach (var type in assembly.GetTypes())
-                        if (typeof(IMetadataProvider).IsAssignableFrom(type)
-                            && type.GetCustomAttributes(typeof(MetadataProviderDescriptorAttribute), false).Length != 0
-                           )
-                            MetadataProviderWrapper.AddExternalProvider(assembly, type);
-                        else if (typeof(IConnector).IsAssignableFrom(type)
-                                 && type.GetCustomAttributes(typeof(ConnectorDescriptorAttribute), false).Length != 0
-                                )
-                            ConnectorWrapper.AddExternalConnector(assembly, type);
-                }
-                catch (Exception e) when (e is FileLoadException or BadImageFormatException)
-                {
-                    await Console.Out.WriteLineAsync($"Failed to load plugin {assemblyPath}");
-                } catch (ReflectionTypeLoadException ex)
-                {
-                    StringBuilder sb = new StringBuilder();
-                    foreach (Exception exSub in ex.LoaderExceptions)
+                    if(!file.EndsWith("Plugin.dll", StringComparison.InvariantCultureIgnoreCase)) continue;
+                    var pluginContext = new PluginLoadContext(pluginDirectory);
+                    PluginContexts.Add(pluginContext);
+                    try
                     {
-                        sb.AppendLine(exSub.Message);
-                        FileNotFoundException exFileNotFound = exSub as FileNotFoundException;
-                        if (exFileNotFound != null)
-                        {                
-                            if(!string.IsNullOrEmpty(exFileNotFound.FusionLog))
-                            {
-                                sb.AppendLine("Fusion Log:");
-                                sb.AppendLine(exFileNotFound.FusionLog);
-                            }
-                        }
-                        sb.AppendLine();
+                        var assembly = pluginContext.LoadFromAssemblyPath(file);
+                        foreach (var type in assembly.GetTypes())
+                            if (typeof(IMetadataProvider).IsAssignableFrom(type)
+                                && type.GetCustomAttributes(typeof(MetadataProviderDescriptorAttribute), false).Length != 0
+                               )
+                                MetadataProviderWrapper.AddExternalProvider(assembly, type);
+                            else if (typeof(IConnector).IsAssignableFrom(type)
+                                     && type.GetCustomAttributes(typeof(ConnectorDescriptorAttribute), false).Length != 0
+                                    )
+                                ConnectorWrapper.AddExternalConnector(assembly, type);
                     }
-                    string errorMessage = sb.ToString();
-                    //Display or log the error based on your application.
-                    await Console.Error.WriteLineAsync(errorMessage);
+                    catch (Exception e) when (e is FileLoadException or BadImageFormatException)
+                    {
+                        await Console.Out.WriteLineAsync($"Failed to load plugin {pluginDirectory}");
+                    }
                 }
             }
         }
         else
             Directory.CreateDirectory(pluginsDirectory);
+
+        foreach (var (name, assembly) in PackagedPlugins)
+        {
+            try
+            {
+                foreach (var type in assembly.GetTypes())
+                    if (typeof(IMetadataProvider).IsAssignableFrom(type)
+                        && type.GetCustomAttributes(typeof(MetadataProviderDescriptorAttribute), false).Length != 0)
+                        MetadataProviderWrapper.AddExternalProvider(assembly, type);
+                    else if (typeof(IConnector).IsAssignableFrom(type) 
+                             && type.GetCustomAttributes(typeof(ConnectorDescriptorAttribute), false).Length != 0)
+                        ConnectorWrapper.AddExternalConnector(assembly, type);
+            }
+            catch (Exception e) when (e is FileLoadException or BadImageFormatException)
+            {
+                await Console.Out.WriteLineAsync($"Failed to load built-in plugin {name}");
+            }
+        }
         
         var options = await ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
         
@@ -270,7 +280,7 @@ internal static class MangaCli
 
     private static async Task<ComicWrapper?> FindComic(string searchQuery, SearchSelectionType searchType)
     {
-        var comics = _connector.SearchComics(searchQuery);
+        var comics = _connector!.SearchComics(searchQuery);
         if (searchQuery == searchQuery.ToLower())
             searchQuery = string.Concat(searchQuery[0].ToString().ToUpper(), searchQuery.AsSpan(1));
 

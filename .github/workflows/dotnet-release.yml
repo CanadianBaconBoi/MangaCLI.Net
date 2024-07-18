@@ -17,26 +17,21 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-      
-    - name: Publish Linux x64
-      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r linux-x64 -o publish-lx64/ --no-restore
-    - name: Publish Linux Arm64
-      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r linux-arm64 -o publish-la64/ --no-restore
-    - name: Publish Windows x64
-      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r win-x64 -o publish-wx64/ --no-restore
-    - name: Publish Windows Arm64
-      run: dotnet publish /p:DebugType=None /p:DebugSymbols=false -r win-arm64 -o publish-wa64/ --no-restore
+        source-url: https://nuget.pkg.github.com/CanadianBaconBoi/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    - name: Build
+      run: |
+        chmod +x build.sh
+        ./build.sh
       
     - name: Rename Files
       run: |
-        mkdir publish
-        mv publish-lx64/MangaCLI.Net publish/MangaCLI.Net-linux-x64
-        mv publish-la64/MangaCLI.Net publish/MangaCLI.Net-linux-arm64
-        mv publish-wx64/MangaCLI.Net.exe publish/MangaCLI.Net-windows-x64.exe
-        mv publish-wa64/MangaCLI.Net.exe publish/MangaCLI.Net-windows-arm64.exe
-        
+        mv publish/cli/linux-x64/MangaCLI.Net publish/MangaCLI.Net-linux-x64
+        mv publish/cli/linux-aarch64/MangaCLI.Net publish/MangaCLI.Net-linux-arm64
+        mv publish/cli/windows-x64/MangaCLI.Net.exe publish/MangaCLI.Net-windows-x64.exe
+        mv publish/cli/windows-aarch64/MangaCLI.Net.exe publish/MangaCLI.Net-windows-arm64.exe
+
     - name: Upload Linux x64
       uses: actions/upload-artifact@v4.3.4
       with:
@@ -57,7 +52,12 @@ jobs:
       with:
         name: MangaCLI.Net-windows-arm64.exe
         path: publish/MangaCLI.Net-windows-arm64.exe
-    
+    - name: Push plugin base package to GitHub registry
+      if: startsWith(github.ref, 'refs/tags/')
+      run: dotnet nuget push publish/pluginbase/*.nupkg --skip-duplicate --no-symbols --api-key ${{secrets.GITHUB_TOKEN}}
+    - name: Push library package to GitHub registry
+      if: startsWith(github.ref, 'refs/tags/')
+      run: dotnet nuget push publish/mangalib/*.nupkg --skip-duplicate --no-symbols --api-key ${{secrets.GITHUB_TOKEN}}
     - name: Release
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')

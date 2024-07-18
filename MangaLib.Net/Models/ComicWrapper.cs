@@ -34,9 +34,9 @@ public class ComicWrapper(IComic comic): IComic
         if (_comicInfoCache.ContainsKey((GetType(), Identifier)))
             return _comicInfoCache[(GetType(), Identifier)];
         
-        var comicInfos = new List<(string, Base.Models.ComicInfo RawComicInfo)> {("connector", RawComicInfo)};
+        var comicInfos = new List<(string, ComicInfo RawComicInfo)> {("connector", RawComicInfo)};
         if (GetMetadataIdentifiers() == null) return _comicInfoCache[(GetType(), Identifier)] = ComicInfoWrapper.Merge(comicInfos, priorities, priorityOverrides);
-        foreach (var (providerName, identifier) in GetMetadataIdentifiers())
+        foreach (var (providerName, identifier) in GetMetadataIdentifiers()!)
         {
             if (!MetadataProviderWrapper.MetadataProviders.ContainsKey(providerName)) continue;
             var provider = MetadataProviderWrapper.MetadataProviders[providerName];
@@ -74,8 +74,8 @@ public class ComicWrapper(IComic comic): IComic
         get => _comic.CoverUrl;
         init => throw new NotImplementedException();
     }
-    public IAsyncEnumerable<Base.Models.IChapter> GetChapters(string language) => _comic.GetChapters(language);
+    public IAsyncEnumerable<IChapter> GetChapters(string language) => _comic.GetChapters(language);
 
     public Dictionary<string, string>? GetMetadataIdentifiers() => _comic.GetMetadataIdentifiers();
-    public Base.Models.ComicInfo RawComicInfo => _comic.RawComicInfo;
+    public ComicInfo RawComicInfo => _comic.RawComicInfo;
 }
