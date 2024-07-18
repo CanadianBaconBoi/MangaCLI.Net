@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <RuntimeIdentifiers>
+            win-x64;win-arm64;linux-x64;linux-arm64
+        </RuntimeIdentifiers>
+
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <SelfContained>False</SelfContained>
+        <DebugType>full</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Title>Manga.Net Default Connectors</Title>
+        <Authors>CanadianBaconBoi</Authors>
+        <Description>Featureful Manga Connectors</Description>
+        <Copyright>(c) 2024 CanadianBaconBoi</Copyright>
+        <PackageProjectUrl>https://github.com/CanadianBaconBoi/Manga.Net.Connectors/</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/CanadianBaconBoi/Manga.Net.Connectors/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/CanadianBaconBoi/Manga.Net.Connectors.git</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\MangaLib.Net.Base\MangaLib.Net.Base.csproj" />
+    </ItemGroup>
+
+</Project>

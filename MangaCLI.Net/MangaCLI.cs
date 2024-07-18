@@ -22,46 +22,103 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Net;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Text;
-using System.Text.Json;
+using AniListNet.Objects;
 using CommandLine;
-using MangaCLI.Net.Connectors.Manga;
-using MangaCLI.Net.Metadata;
-using MangaCLI.Net.Models;
+using MangaLib.Net.Base.Connectors.Manga;
+using MangaLib.Net.Base.Connectors.Metadata;
+using MangaLib.Net.Base.Metadata;
+using MangaLib.Net.Base.Models;
+using MangaLib.Net.Connectors.Manga;
+using MangaLib.Net.Connectors.Metadata;
+using MangaLib.Net.Models;
 using MimeTypes;
 using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using SkiaSharp;
-using MylarJsonContext = MangaCLI.Net.Metadata.MylarJsonContext;
 
 namespace MangaCLI.Net;
 
 internal static class MangaCli
 {
-    public static IConnector Connector = null!;
-
-    public static readonly Config Config = Config.FromFile(Environment.OSVersion.Platform switch
+    private static readonly string ConfigFolderPath = Environment.OSVersion.Platform switch
     {
         PlatformID.Unix => ResolvePath(
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config/mangacli.toml")),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".config/MangaCLI/")),
         PlatformID.Win32NT => ResolvePath(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MangaCLI/mangacli.toml")),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MangaCLI/")),
         _ => throw new ArgumentOutOfRangeException(
             $"Operating system {Environment.OSVersion.VersionString} is not supported")
-    }).Result;
+    };
     
-
+    private static ConnectorWrapper _connector = null!;
+    private static Config Config { set; get; } = null!;
+    private static readonly AssemblyLoadContext PluginLoadContext = new("Plugins", true);
+    
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandLineOptions))]
     public static async Task Main(string[] args)
     {
+        if (!Directory.Exists(ConfigFolderPath))
+            Directory.CreateDirectory(ConfigFolderPath);
+        Config = await Config.FromFile(Path.Combine(ConfigFolderPath, "mangacli.toml"));
+        var pluginsDirectory = Path.Combine(ConfigFolderPath, "plugins/");
+        if (Directory.Exists(pluginsDirectory))
+        {
+            foreach (var assemblyPath in Directory.EnumerateFiles(pluginsDirectory, "*", SearchOption.AllDirectories))
+            {
+                if(!assemblyPath.EndsWith(".plugin.dll")) continue;
+                try
+                {
+                    var assembly = PluginLoadContext.LoadFromAssemblyPath(Path.GetFullPath(assemblyPath));
+                    foreach (var type in assembly.GetTypes())
+                        if (typeof(IMetadataProvider).IsAssignableFrom(type)
+                            && type.GetCustomAttributes(typeof(MetadataProviderDescriptorAttribute), false).Length != 0
+                           )
+                            MetadataProviderWrapper.AddExternalProvider(assembly, type);
+                        else if (typeof(IConnector).IsAssignableFrom(type)
+                                 && type.GetCustomAttributes(typeof(ConnectorDescriptorAttribute), false).Length != 0
+                                )
+                            ConnectorWrapper.AddExternalConnector(assembly, type);
+                }
+                catch (Exception e) when (e is FileLoadException or BadImageFormatException)
+                {
+                    await Console.Out.WriteLineAsync($"Failed to load plugin {assemblyPath}");
+                } catch (ReflectionTypeLoadException ex)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    foreach (Exception exSub in ex.LoaderExceptions)
+                    {
+                        sb.AppendLine(exSub.Message);
+                        FileNotFoundException exFileNotFound = exSub as FileNotFoundException;
+                        if (exFileNotFound != null)
+                        {                
+                            if(!string.IsNullOrEmpty(exFileNotFound.FusionLog))
+                            {
+                                sb.AppendLine("Fusion Log:");
+                                sb.AppendLine(exFileNotFound.FusionLog);
+                            }
+                        }
+                        sb.AppendLine();
+                    }
+                    string errorMessage = sb.ToString();
+                    //Display or log the error based on your application.
+                    await Console.Error.WriteLineAsync(errorMessage);
+                }
+            }
+        }
+        else
+            Directory.CreateDirectory(pluginsDirectory);
+        
         var options = await ValidateCommandLine(Parser.Default.ParseArguments<CommandLineOptions>(args));
-        Connector = IConnector.Connectors[options.Source].Invoke();
         
         foreach (var comicName in options.SearchQuery)
         {
             var result = await DownloadComic(options.Clone(), comicName);
-            var comicInfo = await result.Comic!.GetComicInfo();
+            var comicInfo = await result.Comic!.GetComicInfo(Config.MainPriorities, Config.PriorityOverrides);
             switch (result.Result)
             {
                 case DownloadResult.NotFound:
@@ -101,13 +158,14 @@ internal static class MangaCli
         var options = optionsResult.Value;
 
         // The string sanitizer isn't great on CommandLineParser, but it's a small library so we tolerate it
-        if (!IConnector.Connectors.ContainsKey(options.Source))
+        
+        if (!ConnectorWrapper.TryGetConnector(options.Source, out _connector))
         {
             await Console.Error.WriteLineAsync($"Source \"{options.Source}\" does not exist");
             Environment.Exit(1);
             return null;
         }
-
+        
         options.OutputFolder = ResolvePath(options.OutputFolder);
 
         if (!Directory.Exists(options.OutputFolder))
@@ -125,13 +183,13 @@ internal static class MangaCli
         return options;
     }
 
-    private static async Task<(IComic? Comic, DownloadResult Result)> DownloadComic(CommandLineOptions options, string comicName)
+    private static async Task<(ComicWrapper? Comic, DownloadResult Result)> DownloadComic(CommandLineOptions options, string comicName)
     {
         var comic = await FindComic(comicName, options.SearchSelection);
         if (comic == null)
             return (null, DownloadResult.NotFound);
 
-        var comicInfo = await comic.GetComicInfo();
+        var comicInfo = await comic.GetComicInfo(Config.MainPriorities, Config.PriorityOverrides);
 
         await Console.Out.WriteLineAsync($"Found Comic: \"{comic.Title}\" ({comicInfo.Title})");
 
@@ -156,15 +214,13 @@ internal static class MangaCli
         var mylarSeriesPath = Path.Combine(options.OutputFolder, "series.json");
         if (options.Overwrite || !File.Exists(mylarSeriesPath))
             await using (var fs = new FileStream(mylarSeriesPath, FileMode.Create))
-                await JsonSerializer.SerializeAsync(fs,
-                    MetadataMylar.FromComicInfo(comicInfo,
-                        () => filteredChapters.First().Value.Pages.First().Url),
-                    MylarJsonContext.Default.MetadataMylar);
+                await MetadataMylar.SerializeAsync(fs,
+                    MetadataMylar.FromComicInfo(comicInfo,() => filteredChapters.First().Value.Pages.First().Url));
 
 
         if (comicInfo.Covers?.FirstOrDefault() is { } cover)
         {
-            var response = await Connector.GetClient().GetAsync(cover.Item2.Location);
+            var response = await MangaLib.Net.Base.MangaLib.GetClient().GetAsync(cover.Item2.Location);
             if (response.StatusCode != HttpStatusCode.OK)
                 throw new Exception("Incorrect Status Code");
             if (response.Content.Headers.ContentType?.MediaType == "image/webp")
@@ -212,18 +268,18 @@ internal static class MangaCli
         return (comic, DownloadResult.Successful);
     }
 
-    private static async Task<IComic?> FindComic(string searchQuery, SearchSelectionType searchType)
+    private static async Task<ComicWrapper?> FindComic(string searchQuery, SearchSelectionType searchType)
     {
-        var comics = Connector.SearchComics(searchQuery);
+        var comics = _connector.SearchComics(searchQuery);
         if (searchQuery == searchQuery.ToLower())
             searchQuery = string.Concat(searchQuery[0].ToString().ToUpper(), searchQuery.AsSpan(1));
 
         return searchType switch
         {
-            SearchSelectionType.Exact => await comics.FirstOrDefaultAsync(c => c != null && c.Title.Equals(searchQuery)),
-            SearchSelectionType.First => await comics.FirstOrDefaultAsync(),
+            SearchSelectionType.Exact => await comics.FirstOrDefaultAsync(c => c != null && c.Title.Equals(searchQuery)) is { } comic ? new ComicWrapper(comic) : null,
+            SearchSelectionType.First => await comics.FirstOrDefaultAsync() is { } comic ? new ComicWrapper(comic) : null,
             SearchSelectionType.Random => await comics.ToArrayAsync() is { Length: > 0 } comicArray
-                ? comicArray[Random.Shared.Next(0, comicArray.Length)]
+                ? comicArray[Random.Shared.Next(0, comicArray.Length)] is { } comic ? new ComicWrapper(comic) : null
                 : null,
             _ => null
         };
@@ -259,12 +315,12 @@ internal static class MangaCli
         return chaptersToTake;
     }
     
-    private static async Task<bool> DownloadChapter(ComicInfo comicInfo, IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
+    private static async Task<bool> DownloadChapter(ComicInfoWrapper comicInfoWrapper, IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
     {
         if (!overwrite && File.Exists(outputFilePath))
             return true;
 
-        var comickRackMetadata = chapter.GetComicRackMetadata(comicInfo);
+        var comickRackMetadata = chapter.GetComicRackMetadata(comicInfoWrapper);
 
         await Console.Out.WriteAsync("\r" + new string(' ', Console.BufferWidth) + "\r");
         await Console.Out.WriteAsync($"Downloading Chapter {chapter.ChapterIndex} : {chapter.Title}");
@@ -290,7 +346,7 @@ internal static class MangaCli
                     while (true)
                         try
                         {
-                            using var response = await Connector.GetClient().GetAsync(page.Url, token);
+                            using var response = await MangaLib.Net.Base.MangaLib.GetClient().GetAsync(page.Url, token);
                             if (response.StatusCode != HttpStatusCode.OK)
                                 throw new Exception("Incorrect Status Code");
                             comickRackMetadata.Pages[i].ImageSize =
@@ -351,7 +407,7 @@ internal static class MangaCli
         {
             case OutputFormat.CBZ:
                 await using (var mdFs = new FileStream(Path.Combine(tempDownloadDirectory, "ComicInfo.xml"), FileMode.CreateNew))
-                    MetadataComicRack.Serialize(comickRackMetadata, mdFs);
+                    MetadataComicRack.Serialize(mdFs, comickRackMetadata);
                 await using (var fs = new FileStream(outputFilePath, FileMode.Create))
                     ZipFile.CreateFromDirectory(tempDownloadDirectory, fs);
                 break;
@@ -432,54 +488,4 @@ internal static class MangaCli
         Path.GetFullPath(path.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))
             .Replace("//", Path.DirectorySeparatorChar.ToString())
             .Replace("\\", Path.DirectorySeparatorChar.ToString()));
-}
-
-internal static class UriExtensions
-{
-    internal static Uri Combine(this Uri self, string other) => new(self, other);
-
-    internal static Uri Combine(this Uri self, Uri other) => new(self, other);
-
-    internal static Uri CombineRaw(this Uri self, string other) => new($"{self}{other}");
-
-    internal static Uri CombineRaw(this Uri self, Uri other) => new($"{self}{other}");
-}
-
-internal static class EnumDescriptionExtension
-{
-    public static string GetDescription<T>(this T enumerationValue,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)]
-        Type enumerationType)
-        where T : Enum
-    {
-        if (enumerationValue.GetType() != enumerationType)
-            throw new TypeAccessException("Type passed to GetDescription is not equal to type of value passed");
-        return enumerationType
-            .GetField(enumerationValue.ToString())
-            ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
-            .FirstOrDefault() is DescriptionAttribute attribute
-            ? attribute.Description
-            : enumerationValue.ToString();
-    }
-
-    public static string GetMylarDescription<T>(this T enumerationValue,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)]
-        Type enumerationType)
-        where T : Enum
-    {
-        if (enumerationValue.GetType() != enumerationType)
-            throw new TypeAccessException("Type passed to GetMylarDescription is not equal to type of value passed");
-        return enumerationType
-            .GetField(enumerationValue.ToString())
-            ?.GetCustomAttributes(typeof(MylarDescriptionAttribute), false)
-            .FirstOrDefault() is MylarDescriptionAttribute attribute
-            ? attribute.Description
-            : enumerationValue.ToString();
-    }
-}
-
-public static class EnumerableExtensions
-{
-    public static IEnumerable<T> NullToEmpty<T>(this IEnumerable<T>? src) => src ?? [];
-    public static T[]? EmptyToNull<T>(this T[] src) => src.Length == 0 ? null : src;
 }

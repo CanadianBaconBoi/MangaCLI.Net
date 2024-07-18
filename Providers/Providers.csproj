@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <RuntimeIdentifiers>
+            win-x64;win-arm64;linux-x64;linux-arm64
+        </RuntimeIdentifiers>
+
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <SelfContained>False</SelfContained>
+        <DebugType>full</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Title>Manga.Net Default Providers</Title>
+        <Authors>CanadianBaconBoi</Authors>
+        <Description>Featureful Metadata Providers</Description>
+        <Copyright>(c) 2024 CanadianBaconBoi</Copyright>
+        <PackageProjectUrl>https://github.com/CanadianBaconBoi/Manga.Net.Providers/</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/CanadianBaconBoi/Manga.Net.Providers/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/CanadianBaconBoi/Manga.Net.Providers.git</RepositoryUrl>
+        <RepositoryType>Git</RepositoryType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\MangaLib.Net.Base\MangaLib.Net.Base.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AniListNet" Version="1.7.0" />
+      <PackageReference Include="SkiaSharp" Version="3.0.0-preview.4.1" />
+      <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.0.0-preview.4.1" />
+    </ItemGroup>
+</Project>
