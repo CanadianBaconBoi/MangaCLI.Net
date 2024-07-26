@@ -23,10 +23,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Net;
 using System.Reflection;
-using System.Runtime.Loader;
 using System.Text;
 using CommandLine;
 using Connectors.ComicK;
+using MangaCLI.Net.Logging;
 using MangaLib.Net.Base.Connectors.Manga;
 using MangaLib.Net.Base.Connectors.Metadata;
 using MangaLib.Net.Base.Metadata;
@@ -65,6 +65,8 @@ internal static class MangaCli
         { "DefaultConnectors", typeof(ComickConnector).Assembly },
         { "DefaultProviders", typeof(AnilistMetadataProvider).Assembly }
     };
+
+    private static ILogger _logger;
     
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandLineOptions))]
     public static async Task Main(string[] args)
@@ -132,14 +134,13 @@ internal static class MangaCli
             switch (result.Result)
             {
                 case DownloadResult.NotFound:
-                    await Console.Error.WriteLineAsync($"No comic found for \"{comicName}\"");
+                    await _logger.LogError($"No comic found for \"{comicName}\"");
                     break;
                 case DownloadResult.NoChapters:
-                    await Console.Error.WriteLineAsync($"No chapters found for comic \"{result.Comic!.Title}\" ({comicInfo.Title})");
+                    await _logger.LogError($"No chapters found for comic \"{result.Comic!.Title}\" ({comicInfo.Title})");
                     break;
                 case DownloadResult.NoGoodChapters:
-                    await Console.Error.WriteLineAsync($"No chapters found for comic \"{result.Comic!.Title}\" ({comicInfo.Title}) with Scanlation Group {options.ScanlationGroup}");
-                    await Console.Error.WriteLineAsync($"Try a different Scanlation Group or enable Alternate Groups with --allow-alternate");
+                    await _logger.LogError($"No chapters found for comic \"{result.Comic!.Title}\" ({comicInfo.Title}) with Scanlation Group {options.ScanlationGroup}. Try a different Scanlation Group or enable Alternate Groups with --allow-alternate");
                     break;
             }
         }
@@ -154,10 +155,10 @@ internal static class MangaCli
                 case ErrorType.UnknownOptionError:
                 case ErrorType.RepeatedOptionError:
                 case ErrorType.MissingRequiredOptionError:
-                    await Console.Error.WriteLineAsync("Error parsing command line arguments");
+                    await Console.Out.WriteLineAsync("Error parsing command line arguments");
                     break;
                 default:
-                    await Console.Error.WriteLineAsync("Unknown error parsing command line arguments");
+                    await Console.Out.WriteLineAsync("Unknown error parsing command line arguments");
                     break;
             }
 
@@ -166,12 +167,18 @@ internal static class MangaCli
         }
 
         var options = optionsResult.Value;
+        
+        if (options.SimpleLogging)
+            _logger = new SimpleLogger();
+        else
+            _logger = new TuiLogger();
+
 
         // The string sanitizer isn't great on CommandLineParser, but it's a small library so we tolerate it
         
         if (!ConnectorWrapper.TryGetConnector(options.Source, out _connector))
         {
-            await Console.Error.WriteLineAsync($"Source \"{options.Source}\" does not exist");
+            await Console.Out.WriteLineAsync($"Source \"{options.Source}\" does not exist");
             Environment.Exit(1);
             return null;
         }
@@ -189,19 +196,19 @@ internal static class MangaCli
         while (await streamReader.ReadLineAsync() is { } line)
             queries.Add(line);
         options.SearchQuery = queries.AsEnumerable();
-
+        
         return options;
     }
 
     private static async Task<(ComicWrapper? Comic, DownloadResult Result)> DownloadComic(CommandLineOptions options, string comicName)
     {
-        var comic = await FindComic(comicName, options.SearchSelection);
+        var comic = options.ManualSearchSelection ? await DoManualComicSearch(comicName) : await FindComic(comicName, options.SearchSelection);
         if (comic == null)
             return (null, DownloadResult.NotFound);
 
         var comicInfo = await comic.GetComicInfo(Config.MainPriorities, Config.PriorityOverrides);
 
-        await Console.Out.WriteLineAsync($"Found Comic: \"{comic.Title}\" ({comicInfo.Title})");
+        await _logger.Log($"Found Comic: \"{comic.Title}\" ({comicInfo.Title})");
 
         var chapters = comic.GetChapters(options.Language).GetAsyncEnumerator();
         if (!await chapters.MoveNextAsync())
@@ -259,7 +266,7 @@ internal static class MangaCli
             if (chapter.GroupName == null || chapter.GroupName.Length == 0)
                 chapter.GroupName = ["UNKNOWN"];
 
-            if (!await DownloadChapter(comicInfo, chapter, Path.Combine(
+            if (!await DownloadChapter(comicInfo, chapter, filteredChapters.Count, Path.Combine(
                     options.OutputFolder,
                     NormalizePath($"[{fileIndex++:0000}]_Chapter_{chapterIndex}_[{chapter.GroupName.First()}].{
                         options.Format switch {
@@ -272,7 +279,7 @@ internal static class MangaCli
                 failedChapterCount++;
         }
 
-        await Console.Out.WriteLineAsync($"\nDownloaded Manga: \"{comic.Title}\" ({comicInfo.Title}) [{filteredChapters.Count - failedChapterCount}/{filteredChapters.Count} Chapters]");
+        await _logger.LogWithProgress($"Downloaded Manga: \"{comic.Title}\" ({comicInfo.Title})", filteredChapters.Count - failedChapterCount, filteredChapters.Count, false);
 
         await Task.Delay(1000);
         return (comic, DownloadResult.Successful);
@@ -280,9 +287,10 @@ internal static class MangaCli
 
     private static async Task<ComicWrapper?> FindComic(string searchQuery, SearchSelectionType searchType)
     {
-        var comics = _connector!.SearchComics(searchQuery);
         if (searchQuery == searchQuery.ToLower())
             searchQuery = string.Concat(searchQuery[0].ToString().ToUpper(), searchQuery.AsSpan(1));
+
+        var comics = _connector!.SearchComics(searchQuery);
 
         return searchType switch
         {
@@ -293,6 +301,24 @@ internal static class MangaCli
                 : null,
             _ => null
         };
+    }
+    
+    private static async Task<ComicWrapper?> DoManualComicSearch(string searchQuery)
+    {
+        if (searchQuery == searchQuery.ToLower())
+            searchQuery = string.Concat(searchQuery[0].ToString().ToUpper(), searchQuery.AsSpan(1));
+
+        var comics = await _connector!.SearchComics(searchQuery).ToArrayAsync();
+
+        if (comics.Length == 0)
+            return null;
+
+        var comic =
+            comics[
+                await _logger.LogOptions("Select a comic", comics.Select(c => c!.Title).ToArray())
+            ];
+
+        return comic is { } ? new ComicWrapper(comic) : null;
     }
 
     private static async Task<Dictionary<string, IChapter>> FilterChapters(IAsyncEnumerator<IChapter> chapters, string preferredGroup,
@@ -325,15 +351,15 @@ internal static class MangaCli
         return chaptersToTake;
     }
     
-    private static async Task<bool> DownloadChapter(ComicInfoWrapper comicInfoWrapper, IChapter chapter, string outputFilePath, OutputFormat outputFormat, bool overwrite)
+    private static async Task<bool> DownloadChapter(ComicInfoWrapper comicInfoWrapper, IChapter chapter, int maxChapters, string outputFilePath, OutputFormat outputFormat, bool overwrite)
     {
         if (!overwrite && File.Exists(outputFilePath))
             return true;
 
         var comickRackMetadata = chapter.GetComicRackMetadata(comicInfoWrapper);
 
-        await Console.Out.WriteAsync("\r" + new string(' ', Console.BufferWidth) + "\r");
-        await Console.Out.WriteAsync($"Downloading Chapter {chapter.ChapterIndex} : {chapter.Title}");
+        await _logger.ClearLine();
+        await _logger.LogWithProgress($"Downloading Chapter {chapter.Title}", int.Parse(chapter.ChapterIndex?.Split('.')[0] ?? "0"), maxChapters, false, false);
 
         var tempDownloadDirectory = GetTempDirectory();
 
@@ -382,11 +408,9 @@ internal static class MangaCli
                         catch
                         {
                             failCount++;
-                            if (failCount == 1)
-                                await Console.Out.WriteLineAsync();
                             if (failCount == 3)
                             {
-                                await Console.Error.WriteLineAsync(
+                                await _logger.LogError(
                                     $"Failed to request page {i + 1} three times, chapter {chapter.ChapterIndex} will be missing.");
                                 // ReSharper disable once AccessToDisposedClosure
                                 await cts.CancelAsync();
@@ -399,7 +423,7 @@ internal static class MangaCli
                                 2 => 10,
                                 _ => throw new Exception("Impossibro")
                             };
-                            await Console.Error.WriteLineAsync(
+                            await _logger.LogError(
                                 $"Failed to request page {i + 1}, retrying in {sleep} seconds.");
                             await Task.Delay(sleep * 1000, token);
 

@@ -38,9 +38,16 @@ internal class CommandLineOptions
     public string SearchQueryFile { get; set; }
 
     [Option('m', "manga",
-        Default = SearchSelectionType.First,
+        Required = true,
+        Group = "searchSelection",
         HelpText = "Which manga to select from search (First/Random/Exact)")]
     public SearchSelectionType SearchSelection { get; set; }
+    
+    [Option('s', "select",
+        Required = true,
+        Group = "searchSelection",
+        HelpText = "Manually select manga from list")]
+    public bool ManualSearchSelection { get; set; }
 
     [Option('S', "source",
         Default = "ComicK",
@@ -66,6 +73,11 @@ internal class CommandLineOptions
         Default = "en",
         HelpText = "Language to use when searching for chapters (en/jp/ko/...)")]
     public string Language { get; set; }
+    
+    [Option('t', "text-logging",
+        Default = false,
+        HelpText = "Use simple logging")]
+    public bool SimpleLogging { get; set; }
 
     [Option("no-subfolder",
         Default = false,
@@ -86,6 +98,7 @@ internal class CommandLineOptions
     {
         SearchQuery = SearchQuery,
         SearchSelection = SearchSelection,
+        ManualSearchSelection = ManualSearchSelection,
         Source = Source,
         ScanlationGroup = ScanlationGroup,
         OutputFolder = OutputFolder,
