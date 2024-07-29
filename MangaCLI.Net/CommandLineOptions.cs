@@ -54,7 +54,7 @@ internal class CommandLineOptions
         HelpText = "The source to download manga from (ComicK/...)")]
     public string Source { get; set; }
 
-    [Option('G', "group",
+    [Option('g', "group",
         Default = "Official",
         HelpText = "Preferred group for scanlations")]
     public string ScanlationGroup { get; set; }
@@ -73,6 +73,10 @@ internal class CommandLineOptions
         Default = "en",
         HelpText = "Language to use when searching for chapters (en/jp/ko/...)")]
     public string Language { get; set; }
+    
+    [Option('G', "ignore-group",
+        HelpText = "Scanlation groups that can not be downloaded from")]
+    public IEnumerable<string> IgnoredGroups { get; set; }
     
     [Option('t', "text-logging",
         Default = false,

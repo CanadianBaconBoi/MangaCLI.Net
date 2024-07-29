@@ -15,8 +15,10 @@
     - (Default: First) Which manga to select from search (First/Random/Exact)
 - -S, --source
     - (Default: ComicK) The source to download manga from (ComicK/...)
-- -G, --group
+- -g, --group
     - (Default: Official) Preferred group for scanlations
+- -G, --ignore-group
+  - Group to ignore for scanlations (can be specified multiple times)
 - O, --output
     - (Default: ~/Documents/Manga) The folder to download manga into
 - -F, --format

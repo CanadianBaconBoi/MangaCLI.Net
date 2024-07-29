@@ -214,7 +214,7 @@ internal static class MangaCli
         if (!await chapters.MoveNextAsync())
             return (comic, DownloadResult.NoChapters);
 
-        var filteredChapters= await FilterChapters(chapters, options.ScanlationGroup, !options.DisallowAlternateGroups);
+        var filteredChapters= await FilterChapters(chapters, options.ScanlationGroup, !options.DisallowAlternateGroups, Config.IgnoredScanlationGroups);
         if (filteredChapters.Count == 0)
             return (comic, DownloadResult.NoGoodChapters);
 
@@ -321,14 +321,15 @@ internal static class MangaCli
         return comic is { } ? new ComicWrapper(comic) : null;
     }
 
-    private static async Task<Dictionary<string, IChapter>> FilterChapters(IAsyncEnumerator<IChapter> chapters, string preferredGroup,
-        bool useAlternateGroup)
+    private static async Task<Dictionary<string, IChapter>> FilterChapters(IAsyncEnumerator<IChapter> chapters, string preferredGroup, bool useAlternateGroup, List<string>? ignoredGroups)
     {
         var strCmp = StringComparer.InvariantCultureIgnoreCase;
         Dictionary<string, IChapter> chaptersToTake = new();
         do
         {
             var chapter = chapters.Current;
+            if(chapter.GroupName?.Any(g => ignoredGroups?.Contains(g) ?? false) ?? false)
+                continue;
             if (chaptersToTake.TryGetValue(chapter.ChapterIndex ?? "0", out var chapterWeHave))
             {
                 if ((chapterWeHave.GroupName == null || !chapterWeHave.GroupName.Contains(preferredGroup, strCmp))

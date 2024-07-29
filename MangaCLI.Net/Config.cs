@@ -29,7 +29,13 @@ public class Config
 {
     [IgnoreDataMember] private static readonly string DefaultToml = $"""
                                                               # {Assembly.GetExecutingAssembly().GetName().Name} {Assembly.GetExecutingAssembly().GetName().Version} Config
-
+                                                              
+                                                              # Blacklist of groups for translations, because some of them suck.
+                                                              # default: ["Mangagreat.com", "(low quality)"]
+                                                              ignored_groups = ["Mangagreat.com", "(low quality)"]
+                                                              
+                                                              # Priorities for metadata, connector is the source manga is being downloaded from (MangaDex, ComicK, etc.)
+                                                              # default: ["anilist", "connector"]
                                                               priorities = ["anilist", "connector"]
 
                                                               # The below priority overrides apply to the individual
@@ -97,7 +103,10 @@ public class Config
         await using var fs = new FileStream(path, FileMode.Create);
         await fs.WriteAsync(Encoding.Default.GetBytes(DefaultToml));
     }
-
+    
+    [DataMember(Name = "ignored_groups")]
+    public List<String> IgnoredScanlationGroups { get; set; } = [];
+    
     [DataMember(Name = "priorities")]
     public List<String> MainPriorities { get; set; } = [];
 
