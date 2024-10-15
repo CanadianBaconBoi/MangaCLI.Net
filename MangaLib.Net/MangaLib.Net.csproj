@@ -14,12 +14,13 @@
     
     <PropertyGroup>
         <Title>MangaLib.Net</Title>
-        <Version>1.4.0</Version>
+        <Version>1.5.1</Version>
         <Authors>CanadianBaconBoi</Authors>
         <Description>A Featureful Manga Library</Description>
         <Copyright>(c) 2024 CanadianBaconBoi</Copyright>
         <PackageProjectUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/MangaLib.Net/</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/CanadianBaconBoi/Manga.Net/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/CanadianBaconBoi/Manga.Net.git</RepositoryUrl>
         <RepositoryType>Git</RepositoryType>
         <PackageId>MangaLib.Net</PackageId>
@@ -35,6 +36,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\MangaLib.Net.Base\MangaLib.Net.Base.csproj" />
+        <ProjectReference Include="..\MangaLib.Net.Base\MangaLib.Net.Base.csproj" />
+        <None Include="README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 </Project>

@@ -83,7 +83,7 @@ internal static class MangaCli
                 {
                     if(!file.EndsWith("Plugin.dll", StringComparison.InvariantCultureIgnoreCase)) continue;
                     var pluginContext = new PluginLoadContext(pluginDirectory);
-                    PluginContexts.Add(pluginContext);
+                    var isValidPlugin = false;
                     try
                     {
                         var assembly = pluginContext.LoadFromAssemblyPath(file);
@@ -91,16 +91,27 @@ internal static class MangaCli
                             if (typeof(IMetadataProvider).IsAssignableFrom(type)
                                 && type.GetCustomAttributes(typeof(MetadataProviderDescriptorAttribute), false).Length != 0
                                )
+                            {
                                 MetadataProviderWrapper.AddExternalProvider(assembly, type);
+                                isValidPlugin = true;
+                            }
                             else if (typeof(IConnector).IsAssignableFrom(type)
                                      && type.GetCustomAttributes(typeof(ConnectorDescriptorAttribute), false).Length != 0
                                     )
+                            {
                                 ConnectorWrapper.AddExternalConnector(assembly, type);
+                                isValidPlugin = true;
+                            }
                     }
                     catch (Exception e) when (e is FileLoadException or BadImageFormatException)
                     {
                         await Console.Out.WriteLineAsync($"Failed to load plugin {pluginDirectory}");
                     }
+
+                    if (isValidPlugin)
+                        PluginContexts.Add(pluginContext);
+                    else
+                        pluginContext.Unload();
                 }
             }
         }

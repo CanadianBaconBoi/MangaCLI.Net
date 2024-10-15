@@ -25,7 +25,7 @@ class PluginLoadContext : AssemblyLoadContext
 {
     private AssemblyDependencyResolver _resolver;
 
-    public PluginLoadContext(string pluginPath)
+    public PluginLoadContext(string pluginPath): base(Path.GetFileName(pluginPath), true)
     {
         _resolver = new AssemblyDependencyResolver(pluginPath);
     }
