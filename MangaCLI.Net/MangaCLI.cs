@@ -402,7 +402,10 @@ internal static class MangaCli
                             if (response.Content.Headers.ContentType?.MediaType == "image/webp")
                             {
                                 var path = Path.Combine(tempDownloadDirectory, $"{i + 1:000000}.png");
-                                using SKData image = SKImage.FromEncodedData(await response.Content.ReadAsStreamAsync(token)).Encode(SKEncodedImageFormat.Png, 100);
+                                var responseContent = await response.Content.ReadAsStreamAsync(token);
+                                using MemoryStream ms = new MemoryStream();
+                                await responseContent.CopyToAsync(ms, token);
+                                using SKData image = SKImage.FromEncodedData(ms.GetBuffer()).Encode(SKEncodedImageFormat.Png, 100);
                                 await using var fs = new FileStream(path, FileMode.Create);
                                 fs.Write(image.AsSpan());
                             }
